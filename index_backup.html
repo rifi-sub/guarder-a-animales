@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+
+<html lang="es"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Eris Pet Care | Cuidado de Mascotas en Ontinyent</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&amp;family=Manrope:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-background": "#1c1c19",
+                        "secondary-container": "#ffc5b0",
+                        "on-tertiary-fixed": "#341107",
+                        "secondary-fixed": "#ffdbcf",
+                        "primary-fixed": "#ffdbd1",
+                        "surface-dim": "#dcdad5",
+                        "tertiary": "#814f41",
+                        "on-secondary-container": "#7a4f3f",
+                        "error": "#ba1a1a",
+                        "primary": "#894b39",
+                        "on-primary-fixed-variant": "#6f3726",
+                        "on-secondary": "#ffffff",
+                        "tertiary-fixed-dim": "#f9b7a5",
+                        "surface-variant": "#e5e2dd",
+                        "on-tertiary-container": "#fffbff",
+                        "on-primary": "#ffffff",
+                        "on-primary-fixed": "#380d02",
+                        "error-container": "#ffdad6",
+                        "inverse-on-surface": "#f3f0eb",
+                        "surface-tint": "#8c4d3b",
+                        "outline-variant": "#d8c2bc",
+                        "background": "#fcf9f4",
+                        "secondary-fixed-dim": "#f3baa5",
+                        "surface-container": "#f0ede9",
+                        "tertiary-fixed": "#ffdbd1",
+                        "primary-container": "#a6634f",
+                        "surface-container-lowest": "#ffffff",
+                        "on-secondary-fixed": "#311307",
+                        "surface-bright": "#fcf9f4",
+                        "on-surface": "#1c1c19",
+                        "inverse-surface": "#31302d",
+                        "surface-container-high": "#ebe8e3",
+                        "surface-container-low": "#f6f3ee",
+                        "tertiary-container": "#9d6758",
+                        "on-error": "#ffffff",
+                        "outline": "#86736e",
+                        "surface": "#fcf9f4",
+                        "primary-fixed-dim": "#ffb59f",
+                        "on-secondary-fixed-variant": "#643d2e",
+                        "inverse-primary": "#ffb59f",
+                        "on-primary-container": "#fffbff",
+                        "on-surface-variant": "#53433f",
+                        "secondary": "#7f5443",
+                        "on-error-container": "#93000a",
+                        "surface-container-highest": "#e5e2dd",
+                        "on-tertiary-fixed-variant": "#693a2e",
+                        "on-tertiary": "#ffffff",
+                        "terracota": "#C27A65"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "2xl": "1.5rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "margin-mobile": "16px",
+                        "container-max-width": "1280px",
+                        "gutter": "24px",
+                        "section-gap": "120px",
+                        "element-gap": "24px",
+                        "margin-desktop": "64px"
+                    },
+                    "fontFamily": {
+                        "display-lg": ["Plus Jakarta Sans"],
+                        "body-md": ["Manrope"],
+                        "headline-md": ["Plus Jakarta Sans"],
+                        "headline-sm": ["Plus Jakarta Sans"],
+                        "display-lg-mobile": ["Plus Jakarta Sans"],
+                        "body-lg": ["Manrope"],
+                        "label-md": ["Manrope"]
+                    },
+                    "fontSize": {
+                        "display-lg": ["48px", { "lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "headline-md": ["32px", { "lineHeight": "40px", "fontWeight": "600" }],
+                        "headline-sm": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "display-lg-mobile": ["32px", { "lineHeight": "40px", "fontWeight": "700" }],
+                        "body-lg": ["18px", { "lineHeight": "28px", "fontWeight": "400" }],
+                        "label-md": ["14px", { "lineHeight": "20px", "letterSpacing": "0.05em", "fontWeight": "600" }]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        body { background-color: #fcf9f4; color: #1c1c19; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        .glass-pill { background: rgba(252, 249, 244, 0.8); backdrop-filter: blur(12px); }
+        .hero-image-mask { border-radius: 3rem 1.5rem 3rem 1.5rem; overflow: hidden; }
+        .service-card:hover { transform: translateY(-4px); transition: all 0.3s ease; }
+    </style>
+</head>
+<body class="font-body-md text-on-surface">
+<!-- Section 1: TopNavBar (Pill Floating) -->
+<nav class="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-8 py-3 bg-surface/80 backdrop-blur-md rounded-full mt-6 mx-auto w-fit max-w-[95%] border border-outline-variant/30 shadow-sm font-label-md text-label-md">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">pets</span>
+<span class="font-display-lg text-headline-sm text-primary font-bold">Eris</span>
+</div>
+<div class="hidden md:flex items-center gap-8 mx-12">
+<a class="text-primary font-bold border-b-2 border-primary pb-1" href="#inicio">Inicio</a>
+<a class="text-on-surface-variant hover:text-primary transition-colors" href="#sobre-mi">Sobre mí</a>
+<a class="text-on-surface-variant hover:text-primary transition-colors" href="#servicios">Servicios</a>
+<a class="text-on-surface-variant hover:text-primary transition-colors" href="#disponibilidad">Disponibilidad</a>
+<a class="text-on-surface-variant hover:text-primary transition-colors" href="#reseñas">Reseñas</a>
+<a class="text-on-surface-variant hover:text-primary transition-colors" href="#contacto">Contacto</a>
+</div>
+<button class="bg-terracota text-white px-6 py-2.5 rounded-full font-bold hover:scale-95 transition-transform">Reservar guardería</button>
+</nav>
+<main>
+<!-- Section 2: Hero -->
+<section class="pt-40 pb-20 px-margin-mobile md:px-margin-desktop max-w-container-max-width mx-auto" id="inicio">
+<div class="grid grid-cols-1 md:grid-cols-2 items-center gap-16">
+<div class="space-y-8">
+<div class="flex items-center gap-2 px-4 py-2 bg-surface-container w-fit rounded-full text-on-surface-variant">
+<span class="material-symbols-outlined text-sm">location_on</span>
+<span class="text-xs font-semibold uppercase tracking-widest">Ontinyent, Valencia</span>
+</div>
+<h1 class="font-display-lg text-display-lg md:text-6xl text-primary leading-tight">Ellos felices,<br/><span class="text-terracota">tú tranquilo.</span></h1>
+<p class="text-body-lg text-on-surface-variant max-w-lg">Cuidado personalizado para mascotas en Ontinyent. Un entorno seguro, tranquilo y lleno de cariño para que puedas marcharte con total confianza.</p>
+<div class="flex flex-wrap gap-4 pt-4">
+<button class="bg-terracota text-white px-8 py-4 rounded-2xl font-bold flex items-center gap-2 shadow-lg shadow-terracota/20 hover:-translate-y-1 transition-all">
+<span class="material-symbols-outlined">favorite</span> Reservar una primera quedada
+                        </button>
+<button class="border border-outline-variant text-primary px-8 py-4 rounded-2xl font-bold hover:bg-surface-container transition-colors">Ver servicios</button>
+</div>
+<div class="flex items-center gap-6 text-sm text-on-surface-variant">
+<span class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-green-500"></span> Pocas plazas</span>
+<span class="flex items-center gap-2"><span class="material-symbols-outlined text-lg">videocam</span> Fotos y vídeos a diario</span>
+</div>
+</div>
+<div class="relative">
+<div class="hero-image-mask aspect-[4/5] bg-surface-container shadow-2xl relative overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="A bright and airy living room designed for pet comfort, featuring soft neutral tones, a large window letting in natural light, a comfortable beige sofa, and a stylish cat tree. The atmosphere is warm and inviting, perfect for pet boarding, following the Eris Pet Care brand identity." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDvzAptZ8afLHCF2_Q1Fxr1HwXZL-75475xLFdUvr7MtHcmbESaxz99qH98KAL22yQgJf5xLumD01hDY4lqLFOH656wOBf-PMuExWRiVQGugmwsIrpS44VIbHrAiCHCboColMsyY3ONRxjJEzvWM99CnBGcV3JIOhrwAVqcE0w9pfF8LrnIJRM-I3UgmZwhCW7fo1eC0ua2-sfvb7lt5G5EnrxKxBRErp5UbnRc-jqdRmeknEbVyMsYdA"/>
+<!-- Floating Badges from Reference -->
+<div class="absolute top-6 left-6 bg-white/90 backdrop-blur p-3 rounded-2xl shadow-xl animate-bounce" style="animation-duration: 3s">
+<span class="material-symbols-outlined text-primary">eco</span>
+</div>
+<div class="absolute top-12 right-6 bg-white/95 backdrop-blur p-4 rounded-2xl shadow-xl flex items-center gap-3">
+<span class="material-symbols-outlined text-terracota" style="font-variation-settings: 'FILL' 1;">favorite</span>
+<span class="text-sm font-bold">Un segundo hogar</span>
+</div>
+<div class="absolute bottom-10 left-1/2 -translate-x-1/2 bg-white/95 backdrop-blur p-4 rounded-2xl shadow-xl flex items-center gap-4 w-[80%]">
+<div class="w-10 h-10 rounded-full bg-primary-container flex items-center justify-center">
+<span class="material-symbols-outlined text-white">pets</span>
+</div>
+<div>
+<p class="text-xs text-on-surface-variant">Nueva foto de Luna</p>
+<p class="text-sm font-bold">Durmiendo feliz</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Section 3: Sobre mí -->
+<section class="py-section-gap px-margin-mobile md:px-margin-desktop bg-surface-container-low" id="sobre-mi">
+<div class="max-w-container-max-width mx-auto">
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-16 items-start">
+<div class="lg:col-span-5 relative">
+<div class="rounded-3xl overflow-hidden shadow-2xl aspect-[4/5]">
+<img class="w-full h-full object-cover" data-alt="A portrait of a warm and smiling woman sitting in her sun-drenched living room cuddling a fluffy ginger cat. The background is filled with lush houseplants and minimalist furniture in light wood and beige tones, conveying a serene and trustworthy pet caregiver environment." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDG2yL4-wLZ6pfmfLQeDfiXfKOXBF-Cr2Xh2NR3DSMCBQJIkbUGFR5zTx0LYjtl5hPNDbekU-QSV9H7MdAXo1-Imd6EEuJp56mX5oJkgBaj_jqnDw6u2ZQGH9Dr8NjaovGq2T7hT8zJTh2-aRV5SekYh1bUStMKmNzS_c5KJ_fewbFMcDYqj5T2fVnDy-HxSfeFqDzv_AtgGGIBPkfuEgjdWnTKe_SSWkKQXYDHi_U1Pui8zmUdFjCpcA"/>
+</div>
+<div class="absolute bottom-6 left-6 bg-white p-6 rounded-2xl shadow-xl">
+<p class="text-3xl font-bold text-primary leading-none">+15</p>
+<p class="text-sm text-on-surface-variant font-medium mt-1">años conviviendo con animales</p>
+</div>
+</div>
+<div class="lg:col-span-7">
+<span class="text-xs font-bold uppercase tracking-widest text-terracota mb-4 block">SOBRE MÍ</span>
+<h2 class="font-display-lg text-headline-md md:text-5xl text-primary leading-tight mb-8">Hola, soy Eris. Cuido de tu mascota como si fuera mía.</h2>
+<p class="text-body-lg text-on-surface-variant mb-12">Desde que tengo memoria he vivido rodeada de animales, y con el tiempo he aprendido a escucharlos, entender su lenguaje y darles justo lo que necesitan. No soy una empresa ni una residencia: soy una persona que abre su casa y su corazón a un número reducido de mascotas para poder dedicarles toda la atención que merecen.</p>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+<!-- Mini Cards -->
+<div class="flex items-center gap-4 p-4 bg-white rounded-2xl border border-outline-variant/20">
+<div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-primary text-xl">home_health</span>
+</div>
+<p class="text-sm font-semibold">He convivido con animales desde pequeña</p>
+</div>
+<div class="flex items-center gap-4 p-4 bg-white rounded-2xl border border-outline-variant/20">
+<div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-primary text-xl">psychology</span>
+</div>
+<p class="text-sm font-semibold">Conozco el comportamiento y adiestramiento básico</p>
+</div>
+<div class="flex items-center gap-4 p-4 bg-white rounded-2xl border border-outline-variant/20">
+<div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-primary text-xl">medication</span>
+</div>
+<p class="text-sm font-semibold">Experiencia administrando medicación</p>
+</div>
+<div class="flex items-center gap-4 p-4 bg-white rounded-2xl border border-outline-variant/20">
+<div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-primary text-xl">spark</span>
+</div>
+<p class="text-sm font-semibold">Entorno extremadamente limpio y cuidado</p>
+</div>
+<div class="flex items-center gap-4 p-4 bg-white rounded-2xl border border-outline-variant/20">
+<div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-primary text-xl">schedule</span>
+</div>
+<p class="text-sm font-semibold">Nunca dejo a tu mascota sola más de 2-3h</p>
+</div>
+<div class="flex items-center gap-4 p-4 bg-white rounded-2xl border border-outline-variant/20">
+<div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-primary text-xl">photo_camera</span>
+</div>
+<p class="text-sm font-semibold">Recibirás fotos y vídeos con frecuencia</p>
+</div>
+<div class="flex items-center gap-4 p-4 bg-white rounded-2xl border border-outline-variant/20">
+<div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-primary text-xl">nature</span>
+</div>
+<p class="text-sm font-semibold">Ambiente hogareño y enriquecimiento ambiental</p>
+</div>
+<div class="flex items-center gap-4 p-4 bg-white rounded-2xl border border-outline-variant/20">
+<div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-primary text-xl">stars</span>
+</div>
+<p class="text-sm font-semibold">Calidad y atención por encima de cantidad</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Section 4: Mis mascotas -->
+<section class="py-section-gap px-margin-mobile md:px-margin-desktop">
+<div class="max-w-container-max-width mx-auto text-center mb-16">
+<span class="text-xs font-bold uppercase tracking-widest text-terracota mb-4 block">MIS MASCOTAS</span>
+<h2 class="font-display-lg text-headline-md md:text-5xl text-primary leading-tight">La familia peluda que hace de esta casa un hogar</h2>
+<p class="text-body-lg text-on-surface-variant max-w-2xl mx-auto mt-6">Ellos son parte del equipo. Un ambiente equilibrado y sociable ayuda a que tu mascota se adapte con tranquilidad y confianza.</p>
+</div>
+<div class="max-w-container-max-width mx-auto grid grid-cols-1 md:grid-cols-2 gap-element-gap">
+<!-- Luna -->
+<div class="group cursor-pointer">
+<div class="rounded-3xl overflow-hidden aspect-video shadow-lg mb-6">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" data-alt="A beautiful brown tabby cat with bright green eyes laying comfortably on a white knitted blanket. The lighting is soft and natural, emphasizing the peaceful and serene domestic environment of Eris Pet Care." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAJDjBt_B-H-asfzF9AC1s2AhthpAKA3EsJBarT_3dYEhjNOfH1cGApricJ-AzAuyeX8apRb3OIy95pOV_JfghkaWIrZrKxmZPAcVz2uCHRATRFGFv1rIyk09j33gbXZflDpCMvVkI1r5nkSIbs78GGRGH2IXjJjCz-xqaefhLHaRHRqghrT3F0BtLaTiP5Okcv4QORpAKyHp9McKT_q0mEW46yPRpwhM9xWakZUwQajAIgj-Ih_2OnKw"/>
+</div>
+<div class="flex justify-between items-center px-2">
+<h3 class="text-2xl font-bold text-primary">Luna</h3>
+<span class="px-4 py-1 bg-surface-container rounded-full text-xs font-bold text-on-surface-variant uppercase tracking-wider">Gata · 4 años</span>
+</div>
+<p class="mt-4 px-2 text-on-surface-variant leading-relaxed">Tranquila y observadora. Le encanta buscar los rincones más soleados de la casa para dormir la siesta.</p>
+</div>
+<!-- Coco -->
+<div class="group cursor-pointer">
+<div class="rounded-3xl overflow-hidden aspect-video shadow-lg mb-6">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" data-alt="A small, friendly Cavalier King Charles Spaniel dog with brown and white fur sleeping peacefully on a large terracotta-colored cushion. The setting is cozy, with indoor plants and warm wooden floors in the background, reinforcing the home-boarding concept." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDwjIdDQK8DapqH_c7Q3i0h0pJMgeXBE6_TEGVyjELaVaJE5F2ZeRNSsYpQejpmodnuwYvNk8uu_rhsQM6uh6OD9qj2QYryvhXqp8W6cClMM2Jd2oLgtl7Ja6P0uP9rurO-2aZBUEeeb-l-pGV0sjWdTjoA2OkIuwkiX-dWRjdDfV5rn30HqpOIGQzaxbdALkU0mNkEZKGh7cmEkxk2Db1OG1Q2qZ0LS4n8ZRXgI5_9M-6B_TNhWZQRXA"/>
+</div>
+<div class="flex justify-between items-center px-2">
+<h3 class="text-2xl font-bold text-primary">Coco</h3>
+<span class="px-4 py-1 bg-surface-container rounded-full text-xs font-bold text-on-surface-variant uppercase tracking-wider">Perro · 3 años</span>
+</div>
+<p class="mt-4 px-2 text-on-surface-variant leading-relaxed">Cariñoso y sociable. Recibe a cada nueva mascota con calma y ayuda a que se sientan como en casa.</p>
+</div>
+</div>
+</section>
+<!-- Section 5: Servicios -->
+<section class="py-section-gap px-margin-mobile md:px-margin-desktop bg-surface-container-lowest" id="servicios">
+<div class="max-w-container-max-width mx-auto">
+<div class="text-center mb-16">
+<span class="text-xs font-bold uppercase tracking-widest text-terracota mb-4 block">SERVICIOS</span>
+<h2 class="font-display-lg text-headline-md md:text-5xl text-primary leading-tight">Todo lo que tu mascota necesita para sentirse en casa</h2>
+<p class="text-body-lg text-on-surface-variant max-w-2xl mx-auto mt-6">Servicios pensados con calma y cariño, siempre con atención individual y comunicación constante contigo.</p>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+<!-- Service 1 -->
+<div class="service-card p-8 bg-surface-container-low rounded-3xl border border-outline-variant/10">
+<div class="w-12 h-12 bg-white rounded-2xl flex items-center justify-center mb-6 shadow-sm">
+<span class="material-symbols-outlined text-primary">home</span>
+</div>
+<h4 class="text-xl font-bold text-primary mb-3">Guardería en mi hogar</h4>
+<p class="text-sm text-on-surface-variant">Tu mascota se queda en casa, en un ambiente familiar, seguro y siempre acompañada.</p>
+</div>
+<!-- Service 2 -->
+<div class="service-card p-8 bg-surface-container-low rounded-3xl border border-outline-variant/10">
+<div class="w-12 h-12 bg-white rounded-2xl flex items-center justify-center mb-6 shadow-sm">
+<span class="material-symbols-outlined text-primary">apartment</span>
+</div>
+<h4 class="text-xl font-bold text-primary mb-3">Cuidado a domicilio</h4>
+<p class="text-sm text-on-surface-variant">Voy a tu casa para cuidar de tu mascota en su propio entorno de siempre.</p>
+</div>
+<!-- Service 3 -->
+<div class="service-card p-8 bg-surface-container-low rounded-3xl border border-outline-variant/10">
+<div class="w-12 h-12 bg-white rounded-2xl flex items-center justify-center mb-6 shadow-sm">
+<span class="material-symbols-outlined text-primary">notifications</span>
+</div>
+<h4 class="text-xl font-bold text-primary mb-3">Visitas</h4>
+<p class="text-sm text-on-surface-variant">Visitas puntuales para dar de comer, jugar, limpiar y hacer compañía.</p>
+</div>
+<!-- Service 4 -->
+<div class="service-card p-8 bg-surface-container-low rounded-3xl border border-outline-variant/10">
+<div class="w-12 h-12 bg-white rounded-2xl flex items-center justify-center mb-6 shadow-sm">
+<span class="material-symbols-outlined text-primary">directions_walk</span>
+</div>
+<h4 class="text-xl font-bold text-primary mb-3">Paseos</h4>
+<p class="text-sm text-on-surface-variant">Paseos tranquilos y adaptados al ritmo y carácter de tu perro.</p>
+</div>
+<!-- Service 5 -->
+<div class="service-card p-8 bg-surface-container-low rounded-3xl border border-outline-variant/10">
+<div class="w-12 h-12 bg-white rounded-2xl flex items-center justify-center mb-6 shadow-sm">
+<span class="material-symbols-outlined text-primary">pill</span>
+</div>
+<h4 class="text-xl font-bold text-primary mb-3">Administración de medicación</h4>
+<p class="text-sm text-on-surface-variant">Experiencia dando medicación, con especial cuidado y paciencia en gatos.</p>
+</div>
+<!-- Service 6 -->
+<div class="service-card p-8 bg-surface-container-low rounded-3xl border border-outline-variant/10">
+<div class="w-12 h-12 bg-white rounded-2xl flex items-center justify-center mb-6 shadow-sm">
+<span class="material-symbols-outlined text-primary">photo_camera</span>
+</div>
+<h4 class="text-xl font-bold text-primary mb-3">Fotos y vídeos diarios</h4>
+<p class="text-sm text-on-surface-variant">Recibes actualizaciones cada día para verle feliz donde estés.</p>
+</div>
+<!-- Service 7 -->
+<div class="service-card p-8 bg-surface-container-low rounded-3xl border border-outline-variant/10">
+<div class="w-12 h-12 bg-white rounded-2xl flex items-center justify-center mb-6 shadow-sm">
+<span class="material-symbols-outlined text-primary">potted_plant</span>
+</div>
+<h4 class="text-xl font-bold text-primary mb-3">Enriquecimiento ambiental</h4>
+<p class="text-sm text-on-surface-variant">Juego, estímulos y descanso para que su estancia sea plena y equilibrada.</p>
+</div>
+<!-- Service 8 -->
+<div class="service-card p-8 bg-surface-container-low rounded-3xl border border-outline-variant/10">
+<div class="w-12 h-12 bg-white rounded-2xl flex items-center justify-center mb-6 shadow-sm">
+<span class="material-symbols-outlined text-primary">favorite</span>
+</div>
+<h4 class="text-xl font-bold text-primary mb-3">Cuidados personalizados</h4>
+<p class="text-sm text-on-surface-variant">Cada mascota es única: adapto rutinas, comida y mimos a sus necesidades.</p>
+</div>
+</div>
+<div class="bg-surface-container-low rounded-[2rem] p-10 flex flex-col md:flex-row justify-between items-center gap-12 border border-outline-variant/20">
+<div class="space-y-6 flex-1">
+<h4 class="text-2xl font-bold text-primary">Mascotas bienvenidas en casa</h4>
+<div class="flex flex-wrap gap-3">
+<span class="px-6 py-2 bg-white rounded-full border border-outline-variant/30 text-sm font-semibold">✓ Gatos</span>
+<span class="px-6 py-2 bg-white rounded-full border border-outline-variant/30 text-sm font-semibold">✓ Conejos</span>
+<span class="px-6 py-2 bg-white rounded-full border border-outline-variant/30 text-sm font-semibold">✓ Cobayas</span>
+<span class="px-6 py-2 bg-white rounded-full border border-outline-variant/30 text-sm font-semibold">✓ Hámsters</span>
+<span class="px-6 py-2 bg-white rounded-full border border-outline-variant/30 text-sm font-semibold">✓ Peces</span>
+</div>
+</div>
+<div class="space-y-4 text-sm text-on-surface-variant border-l border-outline-variant/30 pl-10 hidden md:block">
+<p class="flex items-center gap-3">○ Los perros se aceptan principalmente para visitas a domicilio y paseos.</p>
+<p class="flex items-center gap-3">○ Aves y reptiles se valoran de forma individual según cada caso.</p>
+<p class="flex items-center gap-3">○ Por el momento no se aceptan hurones.</p>
+</div>
+</div>
+</div>
+</section>
+<!-- Section 6: El hogar -->
+<section class="py-section-gap px-margin-mobile md:px-margin-desktop">
+<div class="max-w-container-max-width mx-auto">
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-20 items-center">
+<div class="order-2 lg:order-1">
+<span class="text-xs font-bold uppercase tracking-widest text-terracota mb-4 block">EL HOGAR</span>
+<h2 class="font-display-lg text-headline-md md:text-5xl text-primary leading-tight mb-8">Un hogar de verdad, no jaulas</h2>
+<p class="text-body-lg text-on-surface-variant mb-12">Las mascotas que se quedan conmigo disfrutan de espacios reales de una casa: sitios cómodos para descansar, luz natural, plantas and compañía. Priorizo la calidad sobre la cantidad, con el máximo de atención en lugar del máximo de capacidad.</p>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<div class="p-6 bg-surface-container rounded-3xl">
+<div class="flex items-center gap-3 mb-4">
+<span class="material-symbols-outlined text-primary">bed</span>
+<h4 class="font-bold">Habitación adaptada</h4>
+</div>
+<p class="text-xs text-on-surface-variant leading-relaxed">Una habitación de invitados preparada especialmente para los animales.</p>
+</div>
+<div class="p-6 bg-surface-container rounded-3xl">
+<div class="flex items-center gap-3 mb-4">
+<span class="material-symbols-outlined text-primary">gpp_good</span>
+<h4 class="font-bold">Espacios seguros</h4>
+</div>
+<p class="text-xs text-on-surface-variant leading-relaxed">Zonas interiores protegidas donde nada puede hacerles daño.</p>
+</div>
+<div class="p-6 bg-surface-container rounded-3xl">
+<div class="flex items-center gap-3 mb-4">
+<span class="material-symbols-outlined text-primary">toys</span>
+<h4 class="font-bold">Tiempo de juego</h4>
+</div>
+<p class="text-xs text-on-surface-variant leading-relaxed">Estímulos y juego para mantenerlos activos, curiosos y felices.</p>
+</div>
+<div class="p-6 bg-surface-container rounded-3xl">
+<div class="flex items-center gap-3 mb-4">
+<span class="material-symbols-outlined text-primary">bedtime</span>
+<h4 class="font-bold">Descanso tranquilo</h4>
+</div>
+<p class="text-xs text-on-surface-variant leading-relaxed">Rincones cálidos y silenciosos para dormir sin estrés.</p>
+</div>
+</div>
+</div>
+<div class="order-1 lg:order-2 relative">
+<div class="rounded-3xl overflow-hidden aspect-square shadow-2xl">
+<img class="w-full h-full object-cover" data-alt="A detailed wide shot of a cozy living room designed for cats and small dogs. It features a large wooden cat tree, soft floor pillows, hanging plants, and tasteful minimalist decor in a warm beige color scheme. Sunlight pours in through a large window, creating a peaceful 'home away from home' atmosphere." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC2CvwTqSh5XqgdHtiI6eaoSw5o6de4uCiO97A0uD4DpMKtpGtC7G5vGeqQnJ7RBUvZ0bSn88utDZF3AF6pTgQ7fQvIcPU0_8fF7Hgb6Ia5JbdvQUG3mvrDlG-xNoUiTn0BeCzMWBTRO2sEtHji62oe5Ncpv1PHHK_BelZdrQepCPRuwXz6ZphJZReBy2fpETfc6ETTj-IT-fyWhYzbFsUTzwlZHAm-Ef4yAo8YtAvvRkEUM7odchdCrA"/>
+</div>
+<div class="absolute -top-10 -right-10 hidden xl:block bg-white/90 backdrop-blur p-8 rounded-3xl shadow-xl w-64">
+<p class="text-terracota font-bold text-lg">Máxima atención</p>
+<p class="text-sm text-on-surface-variant mt-2">No buscamos cantidad, buscamos que se sientan amados y seguros.</p>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Section 7: Disponibilidad -->
+<section class="py-section-gap px-margin-mobile md:px-margin-desktop bg-white" id="disponibilidad">
+<div class="max-w-container-max-width mx-auto">
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-16 items-center">
+<div class="lg:col-span-5">
+<span class="text-xs font-bold uppercase tracking-widest text-terracota mb-4 block">DISPONIBILIDAD</span>
+<h2 class="font-display-lg text-headline-md md:text-5xl text-primary leading-tight">Consulta las fechas y reserva con tranquilidad</h2>
+<p class="text-body-lg text-on-surface-variant mt-8 mb-10">Como acepto un número reducido de mascotas, las plazas vuelan. Echa un vistazo al calendario y escríbeme para confirmar la disponibilidad de tus fechas.</p>
+<div class="flex flex-col gap-4">
+<div class="flex items-center gap-3">
+<span class="w-3 h-3 rounded-full bg-green-500"></span>
+<span class="text-sm font-semibold">Disponible</span>
+</div>
+<div class="flex items-center gap-3">
+<span class="w-3 h-3 rounded-full bg-red-400"></span>
+<span class="text-sm font-semibold">Reservado</span>
+</div>
+<div class="flex items-center gap-3">
+<span class="w-3 h-3 rounded-full bg-orange-300"></span>
+<span class="text-sm font-semibold">Consultar</span>
+</div>
+</div>
+</div>
+<div class="lg:col-span-7">
+<div class="bg-surface-container-low rounded-[2rem] p-8 shadow-sm">
+<div class="flex items-center justify-between mb-8">
+<h3 class="text-xl font-bold text-primary">Julio 2026</h3>
+<div class="flex gap-2">
+<button class="w-10 h-10 rounded-full border border-outline-variant flex items-center justify-center text-on-surface-variant hover:bg-white transition-colors">
+<span class="material-symbols-outlined">chevron_left</span>
+</button>
+<button class="w-10 h-10 rounded-full border border-outline-variant flex items-center justify-center text-on-surface-variant hover:bg-white transition-colors">
+<span class="material-symbols-outlined">chevron_right</span>
+</button>
+</div>
+</div>
+<!-- Mock Calendar -->
+<div class="grid grid-cols-7 gap-2 text-center text-xs font-bold text-on-surface-variant/50 uppercase tracking-widest mb-4">
+<div>L</div><div>M</div><div>X</div><div>J</div><div>V</div><div>S</div><div>D</div>
+</div>
+<div class="grid grid-cols-7 gap-3">
+<!-- Calendar Grid Mockup (Starts on Wednesday) -->
+<div class="col-start-3 aspect-square rounded-2xl bg-white border border-outline-variant/10 flex flex-col items-center justify-center relative overflow-hidden group hover:border-primary transition-colors cursor-pointer">
+<span class="relative z-10">1</span>
+<div class="absolute bottom-2 w-1 h-1 rounded-full bg-green-500"></div>
+</div>
+<div class="aspect-square rounded-2xl bg-white border border-outline-variant/10 flex flex-col items-center justify-center relative group hover:border-primary transition-colors cursor-pointer">
+<span class="relative z-10">2</span>
+<div class="absolute bottom-2 w-1 h-1 rounded-full bg-orange-300"></div>
+</div>
+<div class="aspect-square rounded-2xl bg-white border border-outline-variant/10 flex flex-col items-center justify-center relative group hover:border-primary transition-colors cursor-pointer">
+<span class="relative z-10">3</span>
+<div class="absolute bottom-2 w-1 h-1 rounded-full bg-red-400"></div>
+</div>
+<div class="aspect-square rounded-2xl bg-white border border-outline-variant/10 flex flex-col items-center justify-center relative group hover:border-primary transition-colors cursor-pointer">
+<span class="relative z-10">4</span>
+<div class="absolute bottom-2 w-1 h-1 rounded-full bg-green-500"></div>
+</div>
+<div class="aspect-square rounded-2xl bg-white border border-outline-variant/10 flex flex-col items-center justify-center relative group hover:border-primary transition-colors cursor-pointer">
+<span class="relative z-10">5</span>
+<div class="absolute bottom-2 w-1 h-1 rounded-full bg-orange-300"></div>
+</div>
+<!-- Rest of the month mock -->
+<script>
+                                    const grid = document.querySelector('.grid.grid-cols-7.gap-3');
+                                    const statuses = ['bg-green-500', 'bg-red-400', 'bg-orange-300'];
+                                    for(let i=6; i<=31; i++) {
+                                        const div = document.createElement('div');
+                                        div.className = "aspect-square rounded-2xl bg-white border border-outline-variant/10 flex flex-col items-center justify-center relative group hover:border-primary transition-colors cursor-pointer";
+                                        const status = statuses[Math.floor(Math.random() * statuses.length)];
+                                        div.innerHTML = `<span>${i}</span><div class="absolute bottom-2 w-1 h-1 rounded-full ${status}"></div>`;
+                                        grid.appendChild(div);
+                                    }
+                                </script>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Section 8: Cómo funciona -->
+<section class="py-section-gap px-margin-mobile md:px-margin-desktop">
+<div class="max-w-container-max-width mx-auto">
+<div class="text-center mb-24">
+<span class="text-xs font-bold uppercase tracking-widest text-terracota mb-4 block">CÓMO FUNCIONA</span>
+<h2 class="font-display-lg text-headline-md md:text-5xl text-primary leading-tight">Un proceso sencillo y cercano</h2>
+<p class="text-body-lg text-on-surface-variant max-w-2xl mx-auto mt-6">Desde el primer mensaje hasta el último mimo, cada paso está pensado para que tú y tu mascota os sintáis en buenas manos.</p>
+</div>
+<div class="relative">
+<!-- Progress Line -->
+<div class="absolute top-8 left-0 right-0 h-px bg-outline-variant/30 hidden md:block"></div>
+<div class="grid grid-cols-1 md:grid-cols-5 gap-12 text-center">
+<div class="space-y-6 relative group">
+<div class="w-16 h-16 rounded-full bg-white shadow-xl flex items-center justify-center mx-auto border-4 border-background group-hover:scale-110 transition-transform relative z-10">
+<span class="material-symbols-outlined text-primary text-2xl">chat_bubble</span>
+<div class="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-terracota text-[10px] text-white flex items-center justify-center font-bold">1</div>
+</div>
+<h4 class="font-bold text-primary">Contacto</h4>
+<p class="text-xs text-on-surface-variant leading-relaxed">Me escribes contándome sobre tu mascota, tus fechas y lo que necesitas.</p>
+</div>
+<div class="space-y-6 relative group">
+<div class="w-16 h-16 rounded-full bg-white shadow-xl flex items-center justify-center mx-auto border-4 border-background group-hover:scale-110 transition-transform relative z-10">
+<span class="material-symbols-outlined text-primary text-2xl">coffee</span>
+<div class="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-terracota text-[10px] text-white flex items-center justify-center font-bold">2</div>
+</div>
+<h4 class="font-bold text-primary">Primera quedada</h4>
+<p class="text-xs text-on-surface-variant leading-relaxed">Nos conocemos sin compromiso para que todo fluya con confianza.</p>
+</div>
+<div class="space-y-6 relative group">
+<div class="w-16 h-16 rounded-full bg-white shadow-xl flex items-center justify-center mx-auto border-4 border-background group-hover:scale-110 transition-transform relative z-10">
+<span class="material-symbols-outlined text-primary text-2xl">pets</span>
+<div class="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-terracota text-[10px] text-white flex items-center justify-center font-bold">3</div>
+</div>
+<h4 class="font-bold text-primary">Conozco a tu mascota</h4>
+<p class="text-xs text-on-surface-variant leading-relaxed">Aprendo sus rutinas, gustos y manías para cuidarla a su medida.</p>
+</div>
+<div class="space-y-6 relative group">
+<div class="w-16 h-16 rounded-full bg-white shadow-xl flex items-center justify-center mx-auto border-4 border-background group-hover:scale-110 transition-transform relative z-10">
+<span class="material-symbols-outlined text-primary text-2xl">photo_camera</span>
+<div class="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-terracota text-[10px] text-white flex items-center justify-center font-bold">4</div>
+</div>
+<h4 class="font-bold text-primary">Recibes fotos y vídeos</h4>
+<p class="text-xs text-on-surface-variant leading-relaxed">Te mantengo al día con actualizaciones para que estés tranquilo.</p>
+</div>
+<div class="space-y-6 relative group">
+<div class="w-16 h-16 rounded-full bg-white shadow-xl flex items-center justify-center mx-auto border-4 border-background group-hover:scale-110 transition-transform relative z-10">
+<span class="material-symbols-outlined text-primary text-2xl">home_app_logo</span>
+<div class="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-terracota text-[10px] text-white flex items-center justify-center font-bold">5</div>
+</div>
+<h4 class="font-bold text-primary">Un hogar seguro</h4>
+<p class="text-xs text-on-surface-variant leading-relaxed">Tu mascota disfruta de un entorno cálido, cuidado y lleno de cariño.</p>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Section 9: Reseñas -->
+<section class="py-section-gap px-margin-mobile md:px-margin-desktop bg-surface-container-low" id="reseñas">
+<div class="max-w-container-max-width mx-auto">
+<div class="text-center mb-16">
+<span class="text-xs font-bold uppercase tracking-widest text-terracota mb-4 block">RESEÑAS</span>
+<h2 class="font-display-lg text-headline-md md:text-5xl text-primary leading-tight">Familias que ya confían en Eris</h2>
+<div class="flex items-center justify-center gap-1 mt-4 text-orange-400">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="ml-2 text-sm font-bold text-on-surface-variant">Cariño, limpieza y confianza en cada estancia</span>
+</div>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+<!-- Review 1 -->
+<div class="bg-white p-8 rounded-[2rem] shadow-sm border border-outline-variant/10 relative">
+<span class="material-symbols-outlined text-4xl text-primary/10 absolute top-6 left-6">format_quote</span>
+<p class="text-sm text-on-surface-variant italic mb-8 relative z-10">"Eris me mandaba fotos y vídeos cada día. Volví de viaje y mi gata estaba feliz y tranquila, como si no me hubiera ido. Confianza total."</p>
+<div class="flex items-center gap-4 border-t border-outline-variant/10 pt-6">
+<div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center font-bold text-primary text-xs tracking-tighter">MG</div>
+<div>
+<p class="text-sm font-bold">María G.</p>
+<p class="text-[10px] text-on-surface-variant uppercase tracking-widest">con Nube, gata persa</p>
+</div>
+</div>
+</div>
+<!-- Review 2 -->
+<div class="bg-white p-8 rounded-[2rem] shadow-sm border border-outline-variant/10 relative">
+<span class="material-symbols-outlined text-4xl text-primary/10 absolute top-6 left-6">format_quote</span>
+<p class="text-sm text-on-surface-variant italic mb-8 relative z-10">"Se nota que ama a los animales. La casa impecable y mi conejo cuidadísimo. Me transmitió una tranquilidad que no había sentido con nadie."</p>
+<div class="flex items-center gap-4 border-t border-outline-variant/10 pt-6">
+<div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center font-bold text-primary text-xs tracking-tighter">JR</div>
+<div>
+<p class="text-sm font-bold">Javier R.</p>
+<p class="text-[10px] text-on-surface-variant uppercase tracking-widest">con Toby, conejo</p>
+</div>
+</div>
+</div>
+<!-- Review 3 -->
+<div class="bg-white p-8 rounded-[2rem] shadow-sm border border-outline-variant/10 relative">
+<span class="material-symbols-outlined text-4xl text-primary/10 absolute top-6 left-6">format_quote</span>
+<p class="text-sm text-on-surface-variant italic mb-8 relative z-10">"Mi gato necesita medicación y Eris la administró sin problema. Muy responsable, cercana y comunicativa. Repetiré sin dudarlo."</p>
+<div class="flex items-center gap-4 border-t border-outline-variant/10 pt-6">
+<div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center font-bold text-primary text-xs tracking-tighter">LM</div>
+<div>
+<p class="text-sm font-bold">Laura M.</p>
+<p class="text-[10px] text-on-surface-variant uppercase tracking-widest">con Milo, gato</p>
+</div>
+</div>
+</div>
+<!-- Review 4 -->
+<div class="bg-white p-8 rounded-[2rem] shadow-sm border border-outline-variant/10 relative">
+<span class="material-symbols-outlined text-4xl text-primary/10 absolute top-6 left-6">format_quote</span>
+<p class="text-sm text-on-surface-variant italic mb-8 relative z-10">"Los paseos y las visitas fueron perfectos. Puntual, cariñosa y siempre atenta. Kira la recibe con una alegría que lo dice todo."</p>
+<div class="flex items-center gap-4 border-t border-outline-variant/10 pt-6">
+<div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center font-bold text-primary text-xs tracking-tighter">CP</div>
+<div>
+<p class="text-sm font-bold">Carlos P.</p>
+<p class="text-[10px] text-on-surface-variant uppercase tracking-widest">con Kira, perra</p>
+</div>
+</div>
+</div>
+<!-- Review 5 -->
+<div class="bg-white p-8 rounded-[2rem] shadow-sm border border-outline-variant/10 relative">
+<span class="material-symbols-outlined text-4xl text-primary/10 absolute top-6 left-6">format_quote</span>
+<p class="text-sm text-on-surface-variant italic mb-8 relative z-10">"Dejar a dos gatos daba respeto, pero Eris lo hizo fácil. Limpieza, cariño y comunicación constante. Un segundo hogar de verdad."</p>
+<div class="flex items-center gap-4 border-t border-outline-variant/10 pt-6">
+<div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center font-bold text-primary text-xs tracking-tighter">AS</div>
+<div>
+<p class="text-sm font-bold">Ana S.</p>
+<p class="text-[10px] text-on-surface-variant uppercase tracking-widest">con Coco y Pelusa</p>
+</div>
+</div>
+</div>
+<!-- Review 6 -->
+<div class="bg-white p-8 rounded-[2rem] shadow-sm border border-outline-variant/10 relative">
+<span class="material-symbols-outlined text-4xl text-primary/10 absolute top-6 left-6">format_quote</span>
+<p class="text-sm text-on-surface-variant italic mb-8 relative z-10">"Súper detallista con la alimentación y el enriquecimiento. Volvió más sociable y contento. Da gusto dejar a tu mascota en tan buenas manos."</p>
+<div class="flex items-center gap-4 border-t border-outline-variant/10 pt-6">
+<div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center font-bold text-primary text-xs tracking-tighter">NB</div>
+<div>
+<p class="text-sm font-bold">Nuria B.</p>
+<p class="text-[10px] text-on-surface-variant uppercase tracking-widest">con Boli, cobaya</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Section 10: CTA Final / Contacto -->
+<section class="py-section-gap px-margin-mobile md:px-margin-desktop" id="contacto">
+<div class="max-w-container-max-width mx-auto">
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-20">
+<div>
+<span class="text-xs font-bold uppercase tracking-widest text-terracota mb-4 block">CONTACTO</span>
+<h2 class="font-display-lg text-headline-md md:text-5xl text-primary leading-tight">Reservemos una primera quedada</h2>
+<p class="text-body-lg text-on-surface-variant mt-8 mb-12">Cuéntame sobre tu mascota y lo que necesitas. Te responderé lo antes posible para conocernos sin ningún compromiso.</p>
+<div class="space-y-8">
+<div class="flex items-start gap-6">
+<div class="w-12 h-12 rounded-2xl bg-surface-container flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-primary">location_on</span>
+</div>
+<div>
+<p class="font-bold text-primary">Ontinyent, Valencia</p>
+<p class="text-sm text-on-surface-variant">y alrededores cercanos</p>
+</div>
+</div>
+<div class="flex items-start gap-6">
+<div class="w-12 h-12 rounded-2xl bg-surface-container flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-primary">speed</span>
+</div>
+<div>
+<p class="font-bold text-primary">Respuesta rápida</p>
+<p class="text-sm text-on-surface-variant">normalmente el mismo día</p>
+</div>
+</div>
+<div class="flex items-start gap-6">
+<div class="w-12 h-12 rounded-2xl bg-surface-container flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-primary">mail</span>
+</div>
+<div>
+<p class="font-bold text-primary">hola@eris-mascotas.es</p>
+<p class="text-sm text-on-surface-variant">escríbeme cuando quieras</p>
+</div>
+</div>
+</div>
+</div>
+<div class="bg-surface-container-low rounded-[2.5rem] p-8 md:p-12">
+<form class="space-y-6">
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<div class="space-y-2">
+<label class="text-xs font-bold text-on-surface-variant uppercase tracking-widest">Nombre</label>
+<input class="w-full bg-white border-outline-variant/30 rounded-2xl p-4 focus:ring-primary focus:border-primary" placeholder="Tu nombre" type="text"/>
+</div>
+<div class="space-y-2">
+<label class="text-xs font-bold text-on-surface-variant uppercase tracking-widest">Email</label>
+<input class="w-full bg-white border-outline-variant/30 rounded-2xl p-4 focus:ring-primary focus:border-primary" placeholder="tu-correo@email.com" type="email"/>
+</div>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<div class="space-y-2">
+<label class="text-xs font-bold text-on-surface-variant uppercase tracking-widest">Teléfono</label>
+<input class="w-full bg-white border-outline-variant/30 rounded-2xl p-4 focus:ring-primary focus:border-primary" placeholder="600 000 000" type="tel"/>
+</div>
+<div class="space-y-2">
+<label class="text-xs font-bold text-on-surface-variant uppercase tracking-widest">Tipo de mascota</label>
+<select class="w-full bg-white border-outline-variant/30 rounded-2xl p-4 focus:ring-primary focus:border-primary text-on-surface-variant">
+<option>Gato</option>
+<option>Perro (Paseo/Visita)</option>
+<option>Pequeño mamífero</option>
+<option>Otros</option>
+</select>
+</div>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<div class="space-y-2">
+<label class="text-xs font-bold text-on-surface-variant uppercase tracking-widest">Servicio</label>
+<select class="w-full bg-white border-outline-variant/30 rounded-2xl p-4 focus:ring-primary focus:border-primary text-on-surface-variant">
+<option>Guardería en mi hogar</option>
+<option>Cuidado a domicilio</option>
+<option>Visitas</option>
+<option>Paseos</option>
+</select>
+</div>
+<div class="space-y-2">
+<label class="text-xs font-bold text-on-surface-variant uppercase tracking-widest">Fechas</label>
+<input class="w-full bg-white border-outline-variant/30 rounded-2xl p-4 focus:ring-primary focus:border-primary" placeholder="Ej. 12-18 de julio" type="text"/>
+</div>
+</div>
+<div class="space-y-2">
+<label class="text-xs font-bold text-on-surface-variant uppercase tracking-widest">Mensaje</label>
+<textarea class="w-full bg-white border-outline-variant/30 rounded-2xl p-4 focus:ring-primary focus:border-primary" placeholder="Cuéntame sobre tu mascota y lo que necesitas..." rows="4"></textarea>
+</div>
+<button class="w-full bg-terracota text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-2 hover:scale-[0.98] transition-transform">
+<span class="material-symbols-outlined">send</span> Enviar solicitud
+                            </button>
+</form>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- Section 11: Footer -->
+<footer class="w-full py-12 px-margin-mobile md:px-margin-desktop flex flex-col md:flex-row justify-between items-center gap-element-gap bg-surface-container-low border-t border-outline-variant/20 font-body-md text-body-md">
+<div class="flex flex-col items-center md:items-start gap-4 max-w-sm">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">pets</span>
+<span class="font-display-lg text-headline-sm text-primary font-bold">Eris</span>
+</div>
+<p class="text-on-surface-variant text-center md:text-left text-sm opacity-80">© 2024 Eris Pet Care. Cuidado cercano, responsable y lleno de cariño para que tu mascota se sienta como en casa.</p>
+</div>
+<div class="flex flex-col md:flex-row gap-16">
+<div class="text-center md:text-left">
+<p class="text-xs font-bold uppercase tracking-widest text-primary mb-4">NAVEGACIÓN</p>
+<div class="flex flex-col gap-2">
+<a class="text-on-surface-variant hover:text-primary transition-colors" href="#sobre-mi">Sobre mí</a>
+<a class="text-on-surface-variant hover:text-primary transition-colors" href="#servicios">Servicios</a>
+<a class="text-on-surface-variant hover:text-primary transition-colors" href="#disponibilidad">Disponibilidad</a>
+<a class="text-on-surface-variant hover:text-primary transition-colors" href="#reseñas">Reseñas</a>
+</div>
+</div>
+<div class="text-center md:text-left">
+<p class="text-xs font-bold uppercase tracking-widest text-primary mb-4">CONTACTO</p>
+<div class="flex flex-col gap-2 text-on-surface-variant">
+<p class="flex items-center justify-center md:justify-start gap-2"><span class="material-symbols-outlined text-sm">location_on</span> Ontinyent, Valencia</p>
+<p class="flex items-center justify-center md:justify-start gap-2"><span class="material-symbols-outlined text-sm">mail</span> hola@eris-mascotas.es</p>
+<p class="flex items-center justify-center md:justify-start gap-2"><span class="material-symbols-outlined text-sm">alternate_email</span> @eris.mascotas</p>
+</div>
+</div>
+</div>
+</footer>
+<script>
+        // Subtle scroll behavior for the floating navbar
+        window.addEventListener('scroll', () => {
+            const nav = document.querySelector('nav');
+            if (window.scrollY > 20) {
+                nav.classList.add('shadow-lg');
+                nav.style.backgroundColor = 'rgba(252, 249, 244, 0.95)';
+            } else {
+                nav.classList.remove('shadow-lg');
+                nav.style.backgroundColor = 'rgba(252, 249, 244, 0.8)';
+            }
+        });
+</script>
+</body>
+</html>

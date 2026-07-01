@@ -1,0 +1,66 @@
+const homeFeatures = [
+  {
+    icon: 'bed',
+    title: 'Habitación adaptada',
+    desc: 'Una habitación de invitados preparada especialmente para los animales.'
+  },
+  {
+    icon: 'gpp_good',
+    title: 'Espacios seguros',
+    desc: 'Zonas interiores protegidas donde nada puede hacerles daño.'
+  },
+  {
+    icon: 'toys',
+    title: 'Tiempo de juego',
+    desc: 'Estímulos y juego para mantenerlos activos, curiosos y felices.'
+  },
+  {
+    icon: 'bedtime',
+    title: 'Descanso tranquilo',
+    desc: 'Rincones cálidos y silenciosos para dormir sin estrés.'
+  }
+];
+
+export default function HomeSection() {
+  return (
+    <section className="py-section-gap px-margin-mobile md:px-margin-desktop">
+      <div className="max-w-container-max-width mx-auto">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-20 items-center">
+          <div className="order-2 lg:order-1">
+            <span className="text-xs font-bold uppercase tracking-widest text-terracota mb-4 block">EL HOGAR</span>
+            <h2 className="font-display-lg text-headline-md md:text-5xl text-primary leading-tight mb-8">
+              Un hogar de verdad, no jaulas
+            </h2>
+            <p className="text-body-lg text-on-surface-variant mb-12">
+              Las mascotas que se quedan conmigo disfrutan de espacios reales de una casa: sitios cómodos para descansar, luz natural, plantas y compañía. Priorizo la calidad sobre la cantidad, con el máximo de atención en lugar del máximo de capacidad.
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {homeFeatures.map((feat, idx) => (
+                <div key={idx} className="p-6 bg-surface-container rounded-3xl">
+                  <div className="flex items-center gap-3 mb-4">
+                    <span className="material-symbols-outlined text-primary">{feat.icon}</span>
+                    <h4 className="font-bold">{feat.title}</h4>
+                  </div>
+                  <p className="text-xs text-on-surface-variant leading-relaxed">{feat.desc}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="order-1 lg:order-2 relative">
+            <div className="rounded-3xl overflow-hidden aspect-square shadow-2xl">
+              <img
+                className="w-full h-full object-cover"
+                src="https://lh3.googleusercontent.com/aida-public/AB6AXuC2CvwTqSh5XqgdHtiI6eaoSw5o6de4uCiO97A0uD4DpMKtpGtC7G5vGeqQnJ7RBUvZ0bSn88utDZF3AF6pTgQ7fQvIcPU0_8fF7Hgb6Ia5JbdvQUG3mvrDlG-xNoUiTn0BeCzMWBTRO2sEtHji62oe5Ncpv1PHHK_BelZdrQepCPRuwXz6ZphJZReBy2fpETfc6ETTj-IT-fyWhYzbFsUTzwlZHAm-Ef4yAo8YtAvvRkEUM7odchdCrA"
+                alt="Cozy pet care living room environment"
+              />
+            </div>
+            <div className="absolute -top-10 -right-10 hidden xl:block bg-white/90 backdrop-blur p-8 rounded-3xl shadow-xl w-64">
+              <p className="text-terracota font-bold text-lg">Máxima atención</p>
+              <p className="text-sm text-on-surface-variant mt-2">No buscamos cantidad, buscamos que se sientan amados y seguros.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}

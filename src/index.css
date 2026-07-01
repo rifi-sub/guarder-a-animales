@@ -1,0 +1,27 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  background-color: #fcf9f4;
+  color: #1c1c19;
+}
+
+.material-symbols-outlined {
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
+
+.glass-pill {
+  background: rgba(252, 249, 244, 0.8);
+  backdrop-filter: blur(12px);
+}
+
+.hero-image-mask {
+  border-radius: 3rem 1.5rem 3rem 1.5rem;
+  overflow: hidden;
+}
+
+.service-card:hover {
+  transform: translateY(-4px);
+  transition: all 0.3s ease;
+}

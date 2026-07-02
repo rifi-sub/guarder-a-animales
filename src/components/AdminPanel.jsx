@@ -462,7 +462,7 @@ export default function AdminPanel() {
           </form>
           
           <div className="mt-8 text-center">
-            <a href="#" className="text-xs text-on-surface-variant hover:text-primary transition-colors flex items-center justify-center gap-1">
+            <a href="/" className="text-xs text-on-surface-variant hover:text-primary transition-colors flex items-center justify-center gap-1">
               <span className="material-symbols-outlined text-xs">arrow_back</span>
               Volver a la web pública
             </a>
@@ -561,7 +561,7 @@ export default function AdminPanel() {
           </div>
           <div className="flex gap-2">
             <a
-              href="#"
+              href="/"
               className="flex-1 border border-outline-variant/30 text-on-surface px-4 py-2.5 rounded-xl font-bold text-xs hover:bg-surface-container transition-colors flex items-center justify-center gap-1.5"
             >
               Ver Web

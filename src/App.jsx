@@ -13,22 +13,21 @@ import Footer from './components/Footer'
 import AdminPanel from './components/AdminPanel'
 
 function App() {
-  const [currentHash, setCurrentHash] = useState(window.location.hash);
+  const [currentPath, setCurrentPath] = useState(window.location.pathname);
 
   useEffect(() => {
-    const handleHashChange = () => {
-      setCurrentHash(window.location.hash);
-      // Auto-scroll to top when hash changes
+    const handlePopState = () => {
+      setCurrentPath(window.location.pathname);
       window.scrollTo(0, 0);
     };
 
-    window.addEventListener('hashchange', handleHashChange);
+    window.addEventListener('popstate', handlePopState);
     return () => {
-      window.removeEventListener('hashchange', handleHashChange);
+      window.removeEventListener('popstate', handlePopState);
     };
   }, []);
 
-  if (currentHash === '#admin') {
+  if (currentPath === '/admin') {
     return <AdminPanel />;
   }
 

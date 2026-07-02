@@ -1,5 +1,7 @@
 import { useState } from 'react';
 
+const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? '' : 'https://alilyback.duckdns.org/eris';
+
 export default function ContactForm() {
   const [formData, setFormData] = useState({
     name: '',
@@ -7,19 +9,51 @@ export default function ContactForm() {
     phone: '',
     petType: 'Gato',
     service: 'Guardería en mi hogar',
-    dates: '',
+    startDate: '',
+    endDate: '',
     message: ''
   });
+
+  const [status, setStatus] = useState('idle'); // idle, submitting, success, error
+  const [errorMessage, setErrorMessage] = useState('');
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    alert(`¡Gracias ${formData.name}! Tu solicitud de contacto ha sido recibida (Simulación).`);
-    // Here we could perform api integration
+    setStatus('submitting');
+    setErrorMessage('');
+    try {
+      const res = await fetch(`${API_BASE}/api/bookings`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Algo salió mal al enviar la solicitud');
+      }
+      setStatus('success');
+      setFormData({
+        name: '',
+        email: '',
+        phone: '',
+        petType: 'Gato',
+        service: 'Guardería en mi hogar',
+        startDate: '',
+        endDate: '',
+        message: ''
+      });
+    } catch (err) {
+      console.error(err);
+      setStatus('error');
+      setErrorMessage(err.message || 'Error de conexión con el servidor.');
+    }
   };
 
   return (
@@ -66,6 +100,24 @@ export default function ContactForm() {
           </div>
           <div className="bg-surface-container-low rounded-[2.5rem] p-8 md:p-12">
             <form onSubmit={handleSubmit} className="space-y-6">
+              {status === 'success' && (
+                <div className="p-4 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-2xl flex items-start gap-3">
+                  <span className="material-symbols-outlined text-emerald-600 shrink-0">check_circle</span>
+                  <div>
+                    <p className="font-bold">¡Solicitud enviada con éxito!</p>
+                    <p className="text-sm">Eris te responderá lo antes posible para concretar vuestro primer encuentro.</p>
+                  </div>
+                </div>
+              )}
+              {status === 'error' && (
+                <div className="p-4 bg-rose-50 text-rose-800 border border-rose-200 rounded-2xl flex items-start gap-3">
+                  <span className="material-symbols-outlined text-rose-600 shrink-0">error</span>
+                  <div>
+                    <p className="font-bold">Error al enviar la solicitud</p>
+                    <p className="text-sm">{errorMessage}</p>
+                  </div>
+                </div>
+              )}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-on-surface-variant uppercase tracking-widest">Nombre</label>
@@ -134,16 +186,29 @@ export default function ContactForm() {
                     <option>Paseos</option>
                   </select>
                 </div>
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-on-surface-variant uppercase tracking-widest">Fechas</label>
-                  <input
-                    name="dates"
-                    value={formData.dates}
-                    onChange={handleChange}
-                    className="w-full bg-white border-outline-variant/30 rounded-2xl p-4 focus:ring-primary focus:border-primary"
-                    placeholder="Ej. 12-18 de julio"
-                    type="text"
-                  />
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-on-surface-variant uppercase tracking-widest">Entrada</label>
+                    <input
+                      name="startDate"
+                      value={formData.startDate}
+                      onChange={handleChange}
+                      className="w-full bg-white border-outline-variant/30 rounded-2xl p-4 focus:ring-primary focus:border-primary text-sm text-on-surface-variant"
+                      type="date"
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-on-surface-variant uppercase tracking-widest">Salida</label>
+                    <input
+                      name="endDate"
+                      value={formData.endDate}
+                      onChange={handleChange}
+                      className="w-full bg-white border-outline-variant/30 rounded-2xl p-4 focus:ring-primary focus:border-primary text-sm text-on-surface-variant"
+                      type="date"
+                      required
+                    />
+                  </div>
                 </div>
               </div>
               <div className="space-y-2">
@@ -159,9 +224,13 @@ export default function ContactForm() {
               </div>
               <button
                 type="submit"
-                className="w-full bg-terracota text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-2 hover:scale-[0.98] transition-transform"
+                disabled={status === 'submitting'}
+                className="w-full bg-terracota text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-2 hover:scale-[0.98] transition-transform disabled:opacity-55 disabled:cursor-not-allowed"
               >
-                <span className="material-symbols-outlined">send</span> Enviar solicitud
+                <span className="material-symbols-outlined">
+                  {status === 'submitting' ? 'sync' : 'send'}
+                </span>
+                {status === 'submitting' ? 'Enviando...' : 'Enviar solicitud'}
               </button>
             </form>
           </div>

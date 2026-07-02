@@ -1,25 +1,52 @@
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
+
+const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? '' : 'https://alilyback.duckdns.org/eris';
 
 const statuses = ['bg-green-500', 'bg-red-400', 'bg-orange-300'];
 
 export default function Calendar() {
+  const [dbAvailability, setDbAvailability] = useState({});
+
+  useEffect(() => {
+    const fetchAvailability = async () => {
+      try {
+        const res = await fetch(`${API_BASE}/api/availability`);
+        if (res.ok) {
+          const data = await res.json();
+          const mapping = {};
+          data.forEach(item => {
+            mapping[item.date] = item.status;
+          });
+          setDbAvailability(mapping);
+        }
+      } catch (err) {
+        console.error('Error fetching availability:', err);
+      }
+    };
+    fetchAvailability();
+  }, []);
+
   // Pre-generate the calendar days for July 2026 to keep them stable
   const days = useMemo(() => {
-    const list = [
-      { day: 1, status: 'bg-green-500' },
-      { day: 2, status: 'bg-orange-300' },
-      { day: 3, status: 'bg-red-400' },
-      { day: 4, status: 'bg-green-500' },
-      { day: 5, status: 'bg-orange-300' }
-    ];
-
-    for (let i = 6; i <= 31; i++) {
-      // Pick a semi-random but stable status
-      const seed = (i * 31 + 17) % statuses.length;
-      list.push({ day: i, status: statuses[seed] });
+    const list = [];
+    for (let i = 1; i <= 31; i++) {
+      const dateStr = `2026-07-${String(i).padStart(2, '0')}`;
+      let status = dbAvailability[dateStr];
+      if (!status) {
+        if (i === 1) status = 'bg-green-500';
+        else if (i === 2) status = 'bg-orange-300';
+        else if (i === 3) status = 'bg-red-400';
+        else if (i === 4) status = 'bg-green-500';
+        else if (i === 5) status = 'bg-orange-300';
+        else {
+          const seed = (i * 31 + 17) % statuses.length;
+          status = statuses[seed];
+        }
+      }
+      list.push({ day: i, status, dateStr });
     }
     return list;
-  }, []);
+  }, [dbAvailability]);
 
   return (
     <section className="py-section-gap px-margin-mobile md:px-margin-desktop bg-white" id="disponibilidad">

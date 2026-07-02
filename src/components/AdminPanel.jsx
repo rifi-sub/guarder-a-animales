@@ -1,4 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
+import { driver } from 'driver.js';
+import 'driver.js/dist/driver.css';
 
 const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? '' : 'https://alilyback.duckdns.org/eris';
 
@@ -71,6 +73,42 @@ export default function AdminPanel() {
   const [editingPrice, setEditingPrice] = useState('');
   const [editingPaymentStatus, setEditingPaymentStatus] = useState('PENDIENTE');
   const [editingPaymentMethod, setEditingPaymentMethod] = useState('');
+
+  // Fase 2: Pestañas de Cliente, Modos y Buscador
+  const [selectedClientTab, setSelectedClientTab] = useState('resumen');
+  const [workMode, setWorkMode] = useState('RECEPTION'); // RECEPTION o CARE
+  const [globalSearch, setGlobalSearch] = useState('');
+  const [bookingViewType, setBookingViewType] = useState('list'); // list o kanban
+
+  const startTour = () => {
+    const driverObj = driver({
+      showProgress: true,
+      nextBtnText: 'Siguiente →',
+      prevBtnText: '← Anterior',
+      doneBtnText: '¡Entendido!',
+      steps: [
+        { popover: { title: 'Bienvenido al CRM de Eris Pet Care', description: 'Vamos a dar un paseo rápido por las principales funcionalidades del panel de administración.' } },
+        { element: '#tour-nav-bookings', popover: { title: 'Gestión de Reservas', description: 'Aquí entrarán todas las solicitudes de la web. Puedes aceptarlas, rechazarlas o pedir más info. Al aceptarlas, se calculan los precios y se añade al cliente al CRM automáticamente.', side: "right", align: 'start' }},
+        { element: '#tour-nav-crm', popover: { title: 'Directorio CRM', description: 'Tu base de datos permanente. Fichas 360º de dueños y mascotas, con historial de interacciones, notas veterinarias y más.', side: "right", align: 'start' }},
+        { element: '#tour-nav-planner', popover: { title: 'Planificador Gantt', description: 'Visión a largo plazo de las estancias. Útil para ver picos de ocupación.', side: "right", align: 'start' }},
+        { element: '#tour-nav-tasks', popover: { title: 'Agenda Diaria', description: 'Lista de mascotas hospedadas hoy y checklist de tareas diarias (paseos, medicinas).', side: "right", align: 'start' }},
+        { element: '#tour-care-mode', popover: { title: 'Modo Cuidados', description: '¿Sales al campo? Haz clic aquí para activar el Modo App Móvil, con botones gigantes y navegación táctil optimizada.', side: "bottom", align: 'center' }},
+      ]
+    });
+    driverObj.drive();
+  };
+
+  useEffect(() => {
+    if (token) {
+      const hasSeenTour = localStorage.getItem('hasSeenTour');
+      if (!hasSeenTour) {
+        localStorage.setItem('hasSeenTour', 'true');
+        setTimeout(() => {
+          startTour();
+        }, 800);
+      }
+    }
+  }, [token]);
 
   // Cargar datos al cambiar de pestaña o token
   useEffect(() => {
@@ -199,6 +237,7 @@ export default function AdminPanel() {
   // --- ACCIONES DE INTERACCIONES ---
   const handleSelectClient = async (client) => {
     setSelectedClient(client);
+    setSelectedClientTab('resumen');
     setNewInteractionContent('');
     try {
       const res = await fetch(`${API_BASE}/api/admin/clients/${client.id}/interactions`, {
@@ -269,6 +308,54 @@ export default function AdminPanel() {
     setEditingPaymentMethod(booking.paymentMethod || '');
   };
 
+  const generateWhatsAppLink = (phone, text) => {
+    if (!phone) return '#';
+    let cleanPhone = phone.replace(/\D/g, '');
+    if (!cleanPhone.startsWith('34')) {
+      cleanPhone = '34' + cleanPhone; // Asumir España por defecto
+    }
+    return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(text)}`;
+  };
+
+  const getWhatsAppMessage = (booking) => {
+    return `¡Hola ${booking.name}! 🐾 Confirmamos la reserva para los cuidados del ${booking.startDate} al ${booking.endDate}. El presupuesto estimado es de ${booking.price ? booking.price + '€' : 'pendiente de calcular'}. ¡Cualquier duda nos dices!`;
+  };
+
+  // --- DRAG AND DROP KANBAN ---
+  const handleDragStart = (e, bookingId) => {
+    e.dataTransfer.setData('text/plain', bookingId.toString());
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+  };
+
+  const handleDrop = async (e, targetStatus) => {
+    e.preventDefault();
+    const bookingIdStr = e.dataTransfer.getData('text/plain');
+    if (!bookingIdStr) return;
+    const bookingId = parseInt(bookingIdStr, 10);
+    
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/bookings/${bookingId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ status: targetStatus })
+      });
+      if (res.ok) {
+        fetchData();
+      } else {
+        const data = await res.json();
+        alert(data.error || 'Error al cambiar estado de reserva');
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   // --- ACCIONES DE RESERVAS ---
 
   const handleAcceptBooking = async (id) => {
@@ -321,6 +408,30 @@ export default function AdminPanel() {
       }
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  const handleDownloadInvoice = async (bookingId) => {
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/bookings/${bookingId}/invoice`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      if (!res.ok) throw new Error('Error al generar la factura');
+      
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Factura-Reserva-${bookingId}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      a.remove();
+    } catch (error) {
+      console.error('Error downloading invoice:', error);
+      alert('No se pudo generar la factura. Asegúrate de que la reserva está en estado Aceptado.');
     }
   };
 
@@ -590,26 +701,67 @@ export default function AdminPanel() {
     );
   }
 
+  const filteredClients = useMemo(() => {
+    if (!globalSearch) return clients;
+    const lower = globalSearch.toLowerCase();
+    return clients.filter(c => 
+      c.name.toLowerCase().includes(lower) || 
+      c.email.toLowerCase().includes(lower) || 
+      c.phone.includes(lower) ||
+      (c.pets && c.pets.some(p => p.name.toLowerCase().includes(lower)))
+    );
+  }, [clients, globalSearch]);
+
+  const filteredPets = useMemo(() => {
+    if (!globalSearch) return pets;
+    const lower = globalSearch.toLowerCase();
+    return pets.filter(p => 
+      p.name.toLowerCase().includes(lower) || 
+      p.type.toLowerCase().includes(lower) || 
+      (p.client && p.client.name.toLowerCase().includes(lower))
+    );
+  }, [pets, globalSearch]);
+
   // Interfaz de Dashboard Completo (con Sidebar Lateral)
   return (
     <div className="min-h-screen bg-background flex flex-col md:flex-row font-body-md text-on-surface">
       
-      {/* SIDEBAR LATERAL */}
-      <aside className="w-full md:w-80 bg-white border-r border-outline-variant/20 flex flex-col justify-between shrink-0 p-8">
+      {/* SIDEBAR LATERAL (Solo Mostrador) */}
+      {workMode === 'RECEPTION' && (
+        <aside className="w-full md:w-80 bg-white border-r border-outline-variant/20 flex flex-col justify-between shrink-0 p-8">
         <div>
           {/* Logo */}
-          <div className="mb-10 text-center md:text-left">
-            <div className="flex items-center gap-2 mb-2 justify-center md:justify-start">
-              <span className="px-3 py-1 bg-primary/10 text-primary rounded-full text-[10px] font-bold uppercase tracking-wider">Modo Admin</span>
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+          <div className="flex items-center gap-3 mb-10">
+            <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center shrink-0">
+              <span className="material-symbols-outlined text-primary text-xl">admin_panel_settings</span>
             </div>
-            <h2 className="font-display-lg text-headline-sm text-primary">Eris Pet Sitter</h2>
-            <p className="text-[10px] text-on-surface-variant/70 tracking-wider uppercase font-bold mt-1">Gestión del Negocio</p>
+            <div>
+              <h2 className="text-xl font-display font-bold text-primary tracking-tight leading-tight">Eris Admin</h2>
+              <p className="text-[10px] text-on-surface-variant font-bold tracking-widest uppercase">Workspace</p>
+            </div>
           </div>
+
+          {/* Toggle Modo Cuidados (Solo Visible en Mostrador) */}
+          <button 
+            id="tour-care-mode"
+            onClick={() => { setWorkMode('CARE'); setActiveTab('tasks'); }}
+            className="w-full mb-8 bg-surface-container-low border border-outline-variant/30 text-on-surface p-4 rounded-2xl flex items-center gap-3 hover:bg-primary/5 hover:border-primary/30 transition-all group relative overflow-hidden"
+          >
+            <div className="absolute inset-0 bg-gradient-to-r from-primary/0 via-primary/5 to-primary/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></div>
+            <div className="w-10 h-10 bg-white rounded-xl shadow-sm border border-outline-variant/10 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+              <span className="material-symbols-outlined text-primary text-lg">smartphone</span>
+            </div>
+            <div className="text-left">
+              <span className="block text-xs font-bold text-primary mb-0.5 uppercase tracking-wider">Entrar Modo Cuidados</span>
+              <span className="block text-[10px] text-on-surface-variant leading-tight">Optimizado para tablet/móvil con Bottom Nav</span>
+            </div>
+            <span className="material-symbols-outlined text-on-surface-variant/30 ml-auto group-hover:text-primary transition-colors">chevron_right</span>
+          </button>
 
           {/* Menú de Navegación */}
           <nav className="space-y-2">
             <button
+              id="tour-nav-bookings"
               onClick={() => setActiveTab('bookings')}
               className={`w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl font-bold text-sm transition-all ${
                 activeTab === 'bookings'
@@ -618,10 +770,16 @@ export default function AdminPanel() {
               }`}
             >
               <span className="material-symbols-outlined">forum</span>
-              Reservas
+              Recepción Reservas
+              {bookings.filter(b => b.status === 'PENDIENTE').length > 0 && (
+                <span className="ml-auto bg-rose-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-sm animate-pulse">
+                  {bookings.filter(b => b.status === 'PENDIENTE').length}
+                </span>
+              )}
             </button>
 
             <button
+              id="tour-nav-crm"
               onClick={() => setActiveTab('crm')}
               className={`w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl font-bold text-sm transition-all ${
                 activeTab === 'crm'
@@ -630,10 +788,11 @@ export default function AdminPanel() {
               }`}
             >
               <span className="material-symbols-outlined">contacts</span>
-              Clientes y Mascotas
+              Directorio CRM
             </button>
 
             <button
+              id="tour-nav-planner"
               onClick={() => setActiveTab('planner')}
               className={`w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl font-bold text-sm transition-all ${
                 activeTab === 'planner'
@@ -646,6 +805,7 @@ export default function AdminPanel() {
             </button>
 
             <button
+              id="tour-nav-tasks"
               onClick={() => setActiveTab('tasks')}
               className={`w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl font-bold text-sm transition-all ${
                 activeTab === 'tasks'
@@ -690,12 +850,20 @@ export default function AdminPanel() {
             <p className="text-xs font-semibold text-primary truncate">admin@eris-mascotas.es</p>
           </div>
           <div className="flex gap-2">
+            <button
+              onClick={startTour}
+              className="flex-1 border border-outline-variant/30 text-on-surface px-4 py-2.5 rounded-xl font-bold text-xs hover:bg-surface-container transition-colors flex items-center justify-center gap-1.5"
+              title="Guía Rápida"
+            >
+              <span className="material-symbols-outlined text-xs">help</span>
+              Tour
+            </button>
             <a
               href="/"
-              className="flex-1 border border-outline-variant/30 text-on-surface px-4 py-2.5 rounded-xl font-bold text-xs hover:bg-surface-container transition-colors flex items-center justify-center gap-1.5"
+              className="w-10 h-10 border border-outline-variant/30 text-on-surface hover:bg-surface-container rounded-xl flex items-center justify-center transition-colors"
+              title="Ver Web"
             >
-              Ver Web
-              <span className="material-symbols-outlined text-xs">arrow_outward</span>
+              <span className="material-symbols-outlined text-sm">arrow_outward</span>
             </a>
             <button
               onClick={handleLogout}
@@ -707,216 +875,325 @@ export default function AdminPanel() {
           </div>
         </div>
       </aside>
+      )}
 
       {/* ÁREA PRINCIPAL DE CONTENIDO */}
-      <main className="flex-1 p-8 md:p-12 overflow-y-auto max-w-7xl">
+      <main className={`flex-1 overflow-y-auto max-w-7xl mx-auto w-full transition-all ${workMode === 'CARE' ? 'p-4 pb-28 md:p-8 md:pb-32' : 'p-8 md:p-12'}`}>
         
         {/* TAB 1: RESERVAS */}
         {activeTab === 'bookings' && (
           <div>
-            <div className="flex justify-between items-center mb-8">
+            <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-8">
               <div>
                 <h1 className="font-display-lg text-headline-md text-primary">Solicitudes de Reserva</h1>
                 <p className="text-sm text-on-surface-variant">Gestión de contacto entrante y conversión automática al CRM.</p>
               </div>
-              <button
-                onClick={fetchData}
-                className="w-10 h-10 rounded-full border border-outline-variant/30 flex items-center justify-center hover:bg-white transition-colors"
-                title="Actualizar datos"
-              >
-                <span className="material-symbols-outlined text-on-surface-variant">refresh</span>
-              </button>
+              <div className="flex items-center gap-3">
+                <div className="flex bg-surface-container-low p-1 rounded-xl border border-outline-variant/15">
+                  <button
+                    type="button"
+                    onClick={() => setBookingViewType('list')}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                      bookingViewType === 'list' ? 'bg-primary text-white shadow-sm' : 'text-on-surface-variant hover:text-on-surface'
+                    }`}
+                  >
+                    <span className="material-symbols-outlined text-sm">format_list_bulleted</span>
+                    Vista Lista
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setBookingViewType('kanban')}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                      bookingViewType === 'kanban' ? 'bg-primary text-white shadow-sm' : 'text-on-surface-variant hover:text-on-surface'
+                    }`}
+                  >
+                    <span className="material-symbols-outlined text-sm">view_week</span>
+                    Tablero Kanban
+                  </button>
+                </div>
+                <button
+                  onClick={fetchData}
+                  className="w-10 h-10 rounded-full border border-outline-variant/30 flex items-center justify-center hover:bg-white transition-colors"
+                  title="Actualizar datos"
+                >
+                  <span className="material-symbols-outlined text-on-surface-variant">refresh</span>
+                </button>
+              </div>
             </div>
 
-            {bookings.length === 0 ? (
-              <div className="bg-white rounded-[2rem] p-12 text-center border border-outline-variant/20 shadow-sm">
-                <span className="material-symbols-outlined text-5xl text-outline-variant/40 mb-4 block">mail_outline</span>
-                <p className="font-bold text-lg text-on-surface-variant">No hay solicitudes registradas.</p>
-              </div>
-            ) : (
-              <div className="space-y-6">
-                {bookings.map((booking) => (
-                  <div
-                    key={booking.id}
-                    className="bg-white border border-outline-variant/20 rounded-[2rem] p-6 md:p-8 shadow-sm flex flex-col lg:flex-row justify-between gap-6 hover:shadow-md transition-shadow relative overflow-hidden"
-                  >
-                    <div className={`absolute left-0 top-0 bottom-0 w-2.5 ${
-                      booking.status === 'PENDIENTE' ? 'bg-orange-300' :
-                      booking.status === 'ACEPTADA' ? 'bg-emerald-500' : 'bg-rose-400'
-                    }`}></div>
+            {bookingViewType === 'list' ? (
+              bookings.length === 0 ? (
+                <div className="bg-white rounded-[2rem] p-12 text-center border border-outline-variant/20 shadow-sm">
+                  <span className="material-symbols-outlined text-5xl text-outline-variant/40 mb-4 block">mail_outline</span>
+                  <p className="font-bold text-lg text-on-surface-variant">No hay solicitudes registradas.</p>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {bookings.map((booking) => (
+                    <div
+                      key={booking.id}
+                      className="bg-white border border-outline-variant/20 rounded-[2rem] p-6 md:p-8 shadow-sm flex flex-col lg:flex-row justify-between gap-6 hover:shadow-md transition-shadow relative overflow-hidden"
+                    >
+                      <div className={`absolute left-0 top-0 bottom-0 w-2.5 ${
+                        booking.status === 'PENDIENTE' ? 'bg-orange-300' :
+                        booking.status === 'ACEPTADA' || booking.status === 'RESERVADA' ? 'bg-emerald-500' :
+                        booking.status === 'VISITA' ? 'bg-indigo-400' :
+                        booking.status === 'PROGRESO' ? 'bg-sky-400' : 'bg-rose-400'
+                      }`}></div>
 
-                    <div className="flex-1 space-y-4 pl-4">
-                      <div className="flex flex-wrap items-center gap-3">
-                        <h3 className="text-lg font-bold text-primary">{booking.name}</h3>
-                        <span className={`px-3 py-1 rounded-full text-xs font-bold tracking-wide uppercase ${
-                          booking.status === 'PENDIENTE' ? 'bg-orange-100 text-orange-800' :
-                          booking.status === 'ACEPTADA' ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
-                        }`}>
-                          {booking.status}
-                        </span>
-                        
-                        {booking.client && (
-                          <span className="px-2.5 py-0.5 bg-primary/10 text-primary border border-primary/20 rounded-md text-[10px] font-bold uppercase tracking-wider">
-                            Ficha CRM vinculada
+                      <div className="flex-1 space-y-4 pl-4">
+                        <div className="flex flex-wrap items-center gap-3">
+                          <h3 className="text-lg font-bold text-primary">{booking.name}</h3>
+                          <span className={`px-3 py-1 rounded-full text-xs font-bold tracking-wide uppercase ${
+                            booking.status === 'PENDIENTE' ? 'bg-orange-100 text-orange-800' :
+                            booking.status === 'ACEPTADA' || booking.status === 'RESERVADA' ? 'bg-emerald-100 text-emerald-800' :
+                            booking.status === 'VISITA' ? 'bg-indigo-100 text-indigo-800' :
+                            booking.status === 'PROGRESO' ? 'bg-sky-100 text-sky-800' : 'bg-rose-100 text-rose-800'
+                          }`}>
+                            {booking.status}
                           </span>
+                          
+                          {booking.client && (
+                            <span className="px-2.5 py-0.5 bg-primary/10 text-primary border border-primary/20 rounded-md text-[10px] font-bold uppercase tracking-wider">
+                              Ficha CRM vinculada
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm bg-surface-container-low p-4 rounded-2xl">
+                          <div>
+                            <p className="text-[10px] text-on-surface-variant uppercase tracking-widest font-bold">Email</p>
+                            <p className="font-semibold text-primary/95 break-all">{booking.email}</p>
+                          </div>
+                          <div>
+                            <p className="text-[10px] text-on-surface-variant uppercase tracking-widest font-bold">Teléfono</p>
+                            <p className="font-semibold text-primary/95">{booking.phone || 'No indicado'}</p>
+                          </div>
+                          <div>
+                            <p className="text-[10px] text-on-surface-variant uppercase tracking-widest font-bold">Servicio / Mascota</p>
+                            <p className="font-semibold text-primary/95">{booking.service} ({booking.petType})</p>
+                          </div>
+                          <div>
+                            <p className="text-[10px] text-on-surface-variant uppercase tracking-widest font-bold">Fechas Estancia</p>
+                            <p className="font-semibold text-terracota font-bold">{booking.startDate} al {booking.endDate}</p>
+                          </div>
+                        </div>
+
+                        {/* INFORMACIÓN DE PRECIOS Y PAGOS */}
+                        {editingBookingId === booking.id ? (
+                          <div className="bg-surface-container p-5 rounded-2xl border border-primary/20 space-y-4">
+                            <p className="text-xs font-bold text-primary uppercase tracking-wider">Editar Datos de Pago</p>
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                              <div className="space-y-1">
+                                <label className="text-[10px] text-on-surface-variant uppercase tracking-widest font-bold">Importe (€)</label>
+                                <input
+                                  type="number"
+                                  value={editingPrice}
+                                  onChange={(e) => setEditingPrice(e.target.value)}
+                                  className="w-full bg-white border border-outline-variant/30 rounded-xl p-2.5 text-xs font-semibold focus:ring-primary focus:border-primary text-right"
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <label className="text-[10px] text-on-surface-variant uppercase tracking-widest font-bold">Estado de Pago</label>
+                                <select
+                                  value={editingPaymentStatus}
+                                  onChange={(e) => setEditingPaymentStatus(e.target.value)}
+                                  className="w-full bg-white border border-outline-variant/30 rounded-xl p-2.5 text-xs font-semibold focus:ring-primary focus:border-primary text-on-surface-variant"
+                                >
+                                  <option value="PENDIENTE">PENDIENTE</option>
+                                  <option value="SEÑA">SEÑA RECIBIDA</option>
+                                  <option value="PAGADO">PAGADO</option>
+                                </select>
+                              </div>
+                              <div className="space-y-1">
+                                <label className="text-[10px] text-on-surface-variant uppercase tracking-widest font-bold">Método de Pago</label>
+                                <select
+                                  value={editingPaymentMethod}
+                                  onChange={(e) => setEditingPaymentMethod(e.target.value)}
+                                  className="w-full bg-white border border-outline-variant/30 rounded-xl p-2.5 text-xs font-semibold focus:ring-primary focus:border-primary text-on-surface-variant"
+                                >
+                                  <option value="">Sin definir</option>
+                                  <option value="BIZUM">BIZUM</option>
+                                  <option value="TRANSFERENCIA">TRANSFERENCIA</option>
+                                  <option value="EFECTIVO">EFECTIVO</option>
+                                </select>
+                              </div>
+                            </div>
+                            <div className="flex justify-end gap-2">
+                              <button
+                                type="button"
+                                onClick={() => setEditingBookingId(null)}
+                                className="px-4 py-2 border border-outline-variant/30 rounded-lg text-xs font-semibold text-on-surface-variant hover:bg-surface-container-high transition-colors"
+                              >
+                                Cancelar
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleSaveBookingPayment(booking.id)}
+                                className="px-4 py-2 bg-primary text-white rounded-lg text-xs font-semibold hover:scale-[0.98] transition-transform"
+                              >
+                                Guardar Cambios
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-xs bg-surface-container-low/50 p-4 rounded-2xl border border-outline-variant/5">
+                            <div>
+                              <p className="text-[10px] text-on-surface-variant uppercase tracking-widest font-bold">Presupuesto</p>
+                              <p className="font-bold text-primary text-sm mt-0.5">{booking.price ? `${booking.price} €` : 'No calculado'}</p>
+                            </div>
+                            <div>
+                              <p className="text-[10px] text-on-surface-variant uppercase tracking-widest font-bold">Estado de Pago</p>
+                              <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-wide uppercase mt-1 ${
+                                booking.paymentStatus === 'PAGADO' ? 'bg-emerald-100 text-emerald-800' :
+                                booking.paymentStatus === 'SEÑA' ? 'bg-sky-100 text-sky-800' : 'bg-rose-100 text-rose-800'
+                              }`}>
+                                {booking.paymentStatus || 'PENDIENTE'}
+                              </span>
+                            </div>
+                            <div>
+                              <p className="text-[10px] text-on-surface-variant uppercase tracking-widest font-bold">Método</p>
+                              <p className="font-semibold text-on-surface mt-0.5">{booking.paymentMethod || 'No indicado'}</p>
+                            </div>
+                            <div>
+                              <p className="text-[10px] text-on-surface-variant uppercase tracking-widest font-bold">Origen / Canal</p>
+                              <p className="font-semibold text-on-surface mt-0.5 flex items-center gap-1">
+                                <span className="material-symbols-outlined text-[12px]">
+                                  {booking.source === 'WHATSAPP' ? 'chat' : 'language'}
+                                </span>
+                                {booking.source || 'WEB'}
+                              </p>
+                            </div>
+                          </div>
+                        )}
+
+                        {booking.message && (
+                          <div>
+                            <p className="text-[10px] text-on-surface-variant uppercase tracking-widest font-bold mb-1">Mensaje</p>
+                            <p className="text-sm bg-background border border-outline-variant/10 p-4 rounded-xl italic text-on-surface-variant">
+                              "{booking.message}"
+                            </p>
+                          </div>
                         )}
                       </div>
 
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm bg-surface-container-low p-4 rounded-2xl">
-                        <div>
-                          <p className="text-[10px] text-on-surface-variant uppercase tracking-widest font-bold">Email</p>
-                          <p className="font-semibold text-primary/95 break-all">{booking.email}</p>
-                        </div>
-                        <div>
-                          <p className="text-[10px] text-on-surface-variant uppercase tracking-widest font-bold">Teléfono</p>
-                          <p className="font-semibold text-primary/95">{booking.phone || 'No indicado'}</p>
-                        </div>
-                        <div>
-                          <p className="text-[10px] text-on-surface-variant uppercase tracking-widest font-bold">Servicio / Mascota</p>
-                          <p className="font-semibold text-primary/95">{booking.service} ({booking.petType})</p>
-                        </div>
-                        <div>
-                          <p className="text-[10px] text-on-surface-variant uppercase tracking-widest font-bold">Fechas Estancia</p>
-                          <p className="font-semibold text-terracota font-bold">{booking.startDate} al {booking.endDate}</p>
-                        </div>
+                      <div className="flex flex-row lg:flex-col justify-end items-center gap-3 border-t lg:border-t-0 lg:border-l border-outline-variant/10 pt-4 lg:pt-0 lg:pl-6 shrink-0 min-w-[170px]">
+                        {booking.status === 'PENDIENTE' ? (
+                          <>
+                            <button
+                              onClick={() => handleAcceptBooking(booking.id)}
+                              className="w-full bg-emerald-600 text-white text-xs font-bold px-4 py-2.5 rounded-xl hover:bg-emerald-700 transition-colors flex items-center justify-center gap-1.5"
+                            >
+                              <span className="material-symbols-outlined text-sm">check</span>
+                              Aceptar y Guardar CRM
+                            </button>
+                            <button
+                              onClick={() => handleRejectBooking(booking.id)}
+                              className="w-full bg-rose-600 text-white text-xs font-bold px-4 py-2.5 rounded-xl hover:bg-rose-700 transition-colors flex items-center justify-center gap-1.5"
+                            >
+                              <span className="material-symbols-outlined text-sm">close</span>
+                              Rechazar
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            {editingBookingId !== booking.id && (
+                              <button
+                                onClick={() => startEditingBooking(booking)}
+                                className="w-full bg-primary/10 text-primary border border-primary/20 text-xs font-bold px-4 py-2.5 rounded-xl hover:bg-primary/20 transition-colors flex items-center justify-center gap-1.5"
+                              >
+                                <span className="material-symbols-outlined text-sm">payments</span>
+                                Editar Pago
+                              </button>
+                            )}
+                            {booking.phone && (
+                              <a
+                                href={generateWhatsAppLink(booking.phone, getWhatsAppMessage(booking))}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="w-full bg-[#25D366] text-white text-xs font-bold px-4 py-2.5 rounded-xl hover:bg-[#1DA851] transition-colors flex items-center justify-center gap-1.5"
+                              >
+                                <span className="material-symbols-outlined text-sm">chat</span>
+                                WhatsApp
+                              </a>
+                            )}
+                            <button
+                              onClick={() => handleReopenBooking(booking.id)}
+                              className="w-full border border-outline-variant text-on-surface-variant text-xs font-bold px-4 py-2.5 rounded-xl hover:bg-surface-container transition-colors flex items-center justify-center gap-1.5"
+                            >
+                              <span className="material-symbols-outlined text-sm">settings_backup_restore</span>
+                              Reabrir
+                            </button>
+                          </>
+                        )}
                       </div>
-
-                      {/* INFORMACIÓN DE PRECIOS Y PAGOS */}
-                      {editingBookingId === booking.id ? (
-                        <div className="bg-surface-container p-5 rounded-2xl border border-primary/20 space-y-4">
-                          <p className="text-xs font-bold text-primary uppercase tracking-wider">Editar Datos de Pago</p>
-                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                            <div className="space-y-1">
-                              <label className="text-[10px] text-on-surface-variant uppercase tracking-widest font-bold">Importe (€)</label>
-                              <input
-                                type="number"
-                                value={editingPrice}
-                                onChange={(e) => setEditingPrice(e.target.value)}
-                                className="w-full bg-white border border-outline-variant/30 rounded-xl p-2.5 text-xs font-semibold focus:ring-primary focus:border-primary text-right"
-                              />
-                            </div>
-                            <div className="space-y-1">
-                              <label className="text-[10px] text-on-surface-variant uppercase tracking-widest font-bold">Estado de Pago</label>
-                              <select
-                                value={editingPaymentStatus}
-                                onChange={(e) => setEditingPaymentStatus(e.target.value)}
-                                className="w-full bg-white border border-outline-variant/30 rounded-xl p-2.5 text-xs font-semibold focus:ring-primary focus:border-primary text-on-surface-variant"
-                              >
-                                <option value="PENDIENTE">PENDIENTE</option>
-                                <option value="SEÑA">SEÑA RECIBIDA</option>
-                                <option value="PAGADO">PAGADO</option>
-                              </select>
-                            </div>
-                            <div className="space-y-1">
-                              <label className="text-[10px] text-on-surface-variant uppercase tracking-widest font-bold">Método de Pago</label>
-                              <select
-                                value={editingPaymentMethod}
-                                onChange={(e) => setEditingPaymentMethod(e.target.value)}
-                                className="w-full bg-white border border-outline-variant/30 rounded-xl p-2.5 text-xs font-semibold focus:ring-primary focus:border-primary text-on-surface-variant"
-                              >
-                                <option value="">Sin definir</option>
-                                <option value="BIZUM">BIZUM</option>
-                                <option value="TRANSFERENCIA">TRANSFERENCIA</option>
-                                <option value="EFECTIVO">EFECTIVO</option>
-                              </select>
-                            </div>
-                          </div>
-                          <div className="flex justify-end gap-2">
-                            <button
-                              type="button"
-                              onClick={() => setEditingBookingId(null)}
-                              className="px-4 py-2 border border-outline-variant/30 rounded-lg text-xs font-semibold text-on-surface-variant hover:bg-surface-container-high transition-colors"
-                            >
-                              Cancelar
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleSaveBookingPayment(booking.id)}
-                              className="px-4 py-2 bg-primary text-white rounded-lg text-xs font-semibold hover:scale-[0.98] transition-transform"
-                            >
-                              Guardar Cambios
-                            </button>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-xs bg-surface-container-low/50 p-4 rounded-2xl border border-outline-variant/5">
-                          <div>
-                            <p className="text-[10px] text-on-surface-variant uppercase tracking-widest font-bold">Presupuesto</p>
-                            <p className="font-bold text-primary text-sm mt-0.5">{booking.price ? `${booking.price} €` : 'No calculado'}</p>
-                          </div>
-                          <div>
-                            <p className="text-[10px] text-on-surface-variant uppercase tracking-widest font-bold">Estado de Pago</p>
-                            <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-wide uppercase mt-1 ${
-                              booking.paymentStatus === 'PAGADO' ? 'bg-emerald-100 text-emerald-800' :
-                              booking.paymentStatus === 'SEÑA' ? 'bg-sky-100 text-sky-800' : 'bg-rose-100 text-rose-800'
-                            }`}>
-                              {booking.paymentStatus || 'PENDIENTE'}
-                            </span>
-                          </div>
-                          <div>
-                            <p className="text-[10px] text-on-surface-variant uppercase tracking-widest font-bold">Método</p>
-                            <p className="font-semibold text-on-surface mt-0.5">{booking.paymentMethod || 'No indicado'}</p>
-                          </div>
-                          <div>
-                            <p className="text-[10px] text-on-surface-variant uppercase tracking-widest font-bold">Origen / Canal</p>
-                            <p className="font-semibold text-on-surface mt-0.5 flex items-center gap-1">
-                              <span className="material-symbols-outlined text-[12px]">
-                                {booking.source === 'WHATSAPP' ? 'chat' : 'language'}
-                              </span>
-                              {booking.source || 'WEB'}
-                            </p>
-                          </div>
-                        </div>
-                      )}
-
-                      {booking.message && (
-                        <div>
-                          <p className="text-[10px] text-on-surface-variant uppercase tracking-widest font-bold mb-1">Mensaje</p>
-                          <p className="text-sm bg-background border border-outline-variant/10 p-4 rounded-xl italic text-on-surface-variant">
-                            "{booking.message}"
-                          </p>
-                        </div>
-                      )}
                     </div>
-
-                    <div className="flex flex-row lg:flex-col justify-end items-center gap-3 border-t lg:border-t-0 lg:border-l border-outline-variant/10 pt-4 lg:pt-0 lg:pl-6 shrink-0 min-w-[170px]">
-                      {booking.status === 'PENDIENTE' ? (
-                        <>
-                          <button
-                            onClick={() => handleAcceptBooking(booking.id)}
-                            className="w-full bg-emerald-600 text-white text-xs font-bold px-4 py-2.5 rounded-xl hover:bg-emerald-700 transition-colors flex items-center justify-center gap-1.5"
-                          >
-                            <span className="material-symbols-outlined text-sm">check</span>
-                            Aceptar y Guardar CRM
-                          </button>
-                          <button
-                            onClick={() => handleRejectBooking(booking.id)}
-                            className="w-full bg-rose-600 text-white text-xs font-bold px-4 py-2.5 rounded-xl hover:bg-rose-700 transition-colors flex items-center justify-center gap-1.5"
-                          >
-                            <span className="material-symbols-outlined text-sm">close</span>
-                            Rechazar
-                          </button>
-                        </>
-                      ) : (
-                        <>
-                          {editingBookingId !== booking.id && (
-                            <button
-                              onClick={() => startEditingBooking(booking)}
-                              className="w-full bg-primary/10 text-primary border border-primary/20 text-xs font-bold px-4 py-2.5 rounded-xl hover:bg-primary/20 transition-colors flex items-center justify-center gap-1.5"
-                            >
-                              <span className="material-symbols-outlined text-sm">payments</span>
-                              Editar Pago
-                            </button>
-                          )}
-                          <button
-                            onClick={() => handleReopenBooking(booking.id)}
-                            className="w-full border border-outline-variant text-on-surface-variant text-xs font-bold px-4 py-2.5 rounded-xl hover:bg-surface-container transition-colors flex items-center justify-center gap-1.5"
-                          >
-                            <span className="material-symbols-outlined text-sm">settings_backup_restore</span>
-                            Reabrir solicitud
-                          </button>
-                        </>
-                      )}
+                  ))}
+                </div>
+              )
+            ) : (
+              <div className="flex gap-4 overflow-x-auto pb-8 items-start snap-x">
+                {['PENDIENTE', 'ACEPTADA', 'RESERVADA', 'VISITA', 'PROGRESO'].map(status => (
+                  <div 
+                    key={status}
+                    className="min-w-[300px] w-[300px] bg-surface-container-low/50 rounded-2xl p-4 border border-outline-variant/10 snap-center shrink-0"
+                    onDragOver={handleDragOver}
+                    onDrop={(e) => handleDrop(e, status)}
+                  >
+                    <div className="flex justify-between items-center mb-4 pb-2 border-b border-outline-variant/10">
+                      <h3 className="font-bold text-sm text-primary uppercase tracking-wider">{status}</h3>
+                      <span className="bg-white text-on-surface-variant text-xs font-bold px-2 py-0.5 rounded-full border border-outline-variant/20 shadow-sm">
+                        {bookings.filter(b => b.status === status).length}
+                      </span>
+                    </div>
+                    <div className="space-y-3 min-h-[150px]">
+                      {bookings.filter(b => b.status === status).map(booking => (
+                        <div 
+                          key={booking.id}
+                          draggable
+                          onDragStart={(e) => handleDragStart(e, booking.id)}
+                          className="bg-white p-4 rounded-xl shadow-sm border border-outline-variant/20 cursor-grab active:cursor-grabbing hover:shadow-md transition-shadow relative overflow-hidden group"
+                        >
+                          <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${
+                            booking.status === 'PENDIENTE' ? 'bg-orange-300' :
+                            booking.status === 'ACEPTADA' || booking.status === 'RESERVADA' ? 'bg-emerald-500' :
+                            booking.status === 'VISITA' ? 'bg-indigo-400' :
+                            booking.status === 'PROGRESO' ? 'bg-sky-400' : 'bg-rose-400'
+                          }`}></div>
+                          <div className="pl-2">
+                            <h4 className="font-bold text-primary text-sm mb-1">{booking.name}</h4>
+                            <p className="text-xs text-on-surface-variant mb-2">{booking.petType} - {booking.service}</p>
+                            <div className="flex justify-between items-center text-[10px] text-on-surface-variant font-medium mb-3">
+                              <span className="bg-surface-container px-2 py-1 rounded-md">{booking.startDate}</span>
+                              {booking.price && <span className="font-bold text-terracota">{booking.price}€</span>}
+                            </div>
+                            
+                            {booking.status !== 'PENDIENTE' && (
+                              <div className="flex gap-2 w-full mt-3">
+                                {booking.phone && (
+                                  <a
+                                    href={generateWhatsAppLink(booking.phone, getWhatsAppMessage(booking))}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex-1 bg-[#25D366]/10 text-[#1DA851] border border-[#25D366]/20 text-[10px] font-bold px-2 py-1.5 rounded-lg hover:bg-[#25D366]/20 transition-colors flex items-center justify-center gap-1"
+                                    onDragStart={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                                  >
+                                    <span className="material-symbols-outlined text-[12px]">chat</span>
+                                    Chatear
+                                  </a>
+                                )}
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); handleDownloadInvoice(booking.id); }}
+                                  className="flex-1 bg-surface-container-low text-primary border border-outline-variant/30 text-[10px] font-bold px-2 py-1.5 rounded-lg hover:bg-surface-container transition-colors flex items-center justify-center gap-1"
+                                >
+                                  <span className="material-symbols-outlined text-[12px]">receipt_long</span>
+                                  Factura
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 ))}
@@ -928,9 +1205,21 @@ export default function AdminPanel() {
         {/* TAB 2: CRM CLIENTES Y MASCOTAS */}
         {activeTab === 'crm' && (
           <div>
-            <div className="mb-8">
-              <h1 className="font-display-lg text-headline-md text-primary">Directorio CRM</h1>
-              <p className="text-sm text-on-surface-variant">Fichas permanentes de dueños de mascotas y animales registrados en Eris Pet Care.</p>
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+              <div>
+                <h1 className="font-display-lg text-headline-md text-primary">Directorio CRM</h1>
+                <p className="text-sm text-on-surface-variant">Fichas permanentes de dueños de mascotas y animales registrados en Eris Pet Care.</p>
+              </div>
+              <div className="relative w-full md:w-80">
+                <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
+                <input
+                  type="text"
+                  placeholder="Buscar cliente, email o mascota..."
+                  value={globalSearch}
+                  onChange={(e) => setGlobalSearch(e.target.value)}
+                  className="w-full bg-surface-container-low border border-outline-variant/30 rounded-2xl py-3 pl-12 pr-4 focus:ring-primary focus:border-primary text-sm text-on-surface"
+                />
+              </div>
             </div>
 
             {/* Selector de Sub-pestañas */}
@@ -1026,7 +1315,7 @@ export default function AdminPanel() {
 
                 {/* Listado de Clientes */}
                 <div className="lg:col-span-8 space-y-4">
-                  {clients.map(client => (
+                  {filteredClients.map(client => (
                     <div key={client.id} className="bg-white border border-outline-variant/20 rounded-[2rem] p-6 shadow-sm">
                       <div className="flex justify-between items-start gap-4 mb-4 border-b border-outline-variant/10 pb-3">
                         <div>
@@ -1187,7 +1476,7 @@ export default function AdminPanel() {
 
                 {/* Listado de Mascotas */}
                 <div className="lg:col-span-8 space-y-4">
-                  {pets.map(pet => (
+                  {filteredPets.map(pet => (
                     <div key={pet.id} className="bg-white border border-outline-variant/20 rounded-[2rem] p-6 shadow-sm flex items-start gap-5">
                       <div className="w-14 h-14 rounded-2xl bg-surface-container flex items-center justify-center shrink-0">
                         <span className="material-symbols-outlined text-3xl text-primary">
@@ -1415,7 +1704,7 @@ export default function AdminPanel() {
               {/* Columna Derecha: Listado de tareas diarias */}
               <div className="lg:col-span-8 bg-white border border-outline-variant/20 p-8 rounded-[2rem] shadow-sm">
                 <h3 className="text-lg font-bold text-primary mb-6 flex items-center gap-2 border-b border-outline-variant/10 pb-4">
-                  <span className="material-symbols-outlined text-xl text-primary">done_all</span>
+                  <span className="material-symbols-outlined text-xl">done_all</span>
                   Lista de verificación diaria
                 </h3>
 
@@ -1571,195 +1860,364 @@ export default function AdminPanel() {
         )}
 
         {/* MODAL FICHA 360 Y TIMELINE DE INTERACCIONES */}
-        {selectedClient && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fade-in">
-            <div className="bg-white rounded-[2.5rem] border border-outline-variant/15 w-full max-w-4xl max-h-[85vh] overflow-y-auto p-8 md:p-12 shadow-2xl relative">
-              {/* Botón cerrar */}
-              <button
-                type="button"
-                onClick={() => setSelectedClient(null)}
-                className="absolute right-6 top-6 w-10 h-10 rounded-full bg-surface-container hover:bg-surface-container-high flex items-center justify-center transition-colors"
-              >
-                <span className="material-symbols-outlined text-on-surface-variant">close</span>
-              </button>
+        {selectedClient && (() => {
+          const clientBookings = bookings.filter(b => b.clientId === selectedClient.id || b.email === selectedClient.email);
+          const totalSpent = clientBookings.reduce((sum, b) => sum + (b.price || 0), 0);
+          const totalBookingsCount = clientBookings.length;
 
-              <span className="text-xs font-bold uppercase tracking-widest text-terracota mb-3 block">FICHA 360 CLIENTE</span>
-              <h2 className="text-3xl font-bold text-primary mb-2 font-display-lg">{selectedClient.name}</h2>
-              <p className="text-xs text-on-surface-variant/70 mb-8 border-b border-outline-variant/10 pb-4">
-                Registrado en Eris CRM | Canal de comunicación preferido: <span className="font-bold text-primary">{selectedClient.preferredChannel || 'WHATSAPP'}</span>
-              </p>
+          return (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fade-in">
+              <div className="bg-white rounded-[2.5rem] border border-outline-variant/15 w-full max-w-5xl max-h-[85vh] overflow-y-auto p-6 md:p-10 shadow-2xl relative">
+                {/* Botón cerrar */}
+                <button
+                  type="button"
+                  onClick={() => setSelectedClient(null)}
+                  className="absolute right-6 top-6 w-10 h-10 rounded-full bg-surface-container hover:bg-surface-container-high flex items-center justify-center transition-colors"
+                >
+                  <span className="material-symbols-outlined text-on-surface-variant">close</span>
+                </button>
 
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-                {/* Datos del Cliente y sus Mascotas */}
-                <div className="space-y-6">
-                  <div className="bg-surface-container-low p-6 rounded-3xl border border-outline-variant/10 space-y-4">
-                    <h4 className="font-bold text-primary text-base flex items-center gap-2">
-                      <span className="material-symbols-outlined text-sm">contact_phone</span>
-                      Datos de Contacto
-                    </h4>
-                    <div className="grid grid-cols-2 gap-4 text-xs">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start mt-4">
+                  {/* COLUMNA IZQUIERDA: PERFIL Y NAVEGACIÓN DE PESTAÑAS */}
+                  <div className="lg:col-span-4 bg-surface-container-low p-6 rounded-3xl border border-outline-variant/10 space-y-6">
+                    <div>
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-terracota mb-1 block">PERFIL CRM</span>
+                      <h3 className="text-2xl font-bold text-primary leading-tight font-display-md">{selectedClient.name}</h3>
+                      <p className="text-xs text-on-surface-variant/70 mt-1">ID: #{selectedClient.id}</p>
+                    </div>
+
+                    <div className="space-y-3 border-t border-outline-variant/10 pt-4 text-xs">
                       <div>
                         <p className="font-bold text-on-surface-variant/60 uppercase tracking-wider">Email</p>
-                        <p className="font-semibold mt-0.5 break-all">{selectedClient.email}</p>
+                        <p className="font-semibold break-all mt-0.5">{selectedClient.email}</p>
                       </div>
                       <div>
                         <p className="font-bold text-on-surface-variant/60 uppercase tracking-wider">Teléfono</p>
                         <p className="font-semibold mt-0.5">{selectedClient.phone || 'No registrado'}</p>
                       </div>
-                      <div className="col-span-2">
-                        <p className="font-bold text-on-surface-variant/60 uppercase tracking-wider">Dirección / Zona</p>
-                        <p className="font-semibold mt-0.5">{selectedClient.address || 'No registrada'}</p>
-                      </div>
                       <div>
-                        <p className="font-bold text-on-surface-variant/60 uppercase tracking-wider">Contacto Emergencia</p>
-                        <p className="font-semibold mt-0.5">{selectedClient.emergencyContact || 'No registrado'}</p>
+                        <p className="font-bold text-on-surface-variant/60 uppercase tracking-wider">Canal Preferido</p>
+                        <span className="inline-block bg-primary/10 text-primary border border-primary/20 px-2.5 py-0.5 rounded text-[10px] font-bold mt-1 uppercase tracking-wide">
+                          {selectedClient.preferredChannel || 'WHATSAPP'}
+                        </span>
                       </div>
-                      <div>
-                        <p className="font-bold text-on-surface-variant/60 uppercase tracking-wider">Estado / Etiquetas</p>
-                        <div className="flex flex-wrap gap-1 mt-1">
-                          <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${
-                            selectedClient.status === 'ACTIVE' ? 'bg-green-100 text-green-800' : 'bg-rose-100 text-rose-800'
-                          }`}>
-                            {selectedClient.status || 'ACTIVE'}
-                          </span>
-                          {selectedClient.tags && selectedClient.tags.split(',').map((tag, idx) => (
-                            <span key={idx} className="px-2 py-0.5 bg-primary/10 text-primary border border-primary/20 rounded text-[9px] font-bold">
-                              {tag.trim()}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
+                    </div>
+
+                    {/* Selector Vertical de Pestañas */}
+                    <div className="space-y-2 border-t border-outline-variant/10 pt-4">
+                      {[
+                        { id: 'resumen', label: 'Resumen Ficha', icon: 'dashboard' },
+                        { id: 'mascotas', label: `Mascotas (${selectedClient.pets.length})`, icon: 'pets' },
+                        { id: 'reservas', label: `Reservas (${totalBookingsCount})`, icon: 'calendar_month' },
+                        { id: 'interacciones', label: 'Línea de Tiempo', icon: 'history' }
+                      ].map(tab => (
+                        <button
+                          key={tab.id}
+                          type="button"
+                          onClick={() => setSelectedClientTab(tab.id)}
+                          className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-xs transition-all text-left ${
+                            selectedClientTab === tab.id
+                              ? 'bg-primary text-white shadow-sm'
+                              : 'text-on-surface-variant hover:bg-surface-container hover:text-on-surface'
+                          }`}
+                        >
+                          <span className="material-symbols-outlined text-sm">{tab.icon}</span>
+                          {tab.label}
+                        </button>
+                      ))}
                     </div>
                   </div>
 
-                  {/* Mascotas del Cliente */}
-                  <div className="space-y-4">
-                    <h4 className="font-bold text-primary text-base flex items-center gap-2">
-                      <span className="material-symbols-outlined text-sm">pets</span>
-                      Ficha Médica de Mascotas
-                    </h4>
-                    {selectedClient.pets.length === 0 ? (
-                      <p className="text-xs text-on-surface-variant/60 italic">No hay mascotas asociadas.</p>
-                    ) : (
-                      selectedClient.pets.map(pet => (
-                        <div key={pet.id} className="bg-surface-container-low p-6 rounded-3xl border border-outline-variant/10 space-y-3">
-                          <div className="flex justify-between items-center border-b border-outline-variant/10 pb-2">
-                            <h5 className="font-bold text-primary text-sm flex items-center gap-1.5">
-                              <span className="material-symbols-outlined text-sm">
-                                {pet.type.toLowerCase().includes('perro') ? 'pets' : 'cat'}
-                              </span>
-                              {pet.name} ({pet.breed || 'Sin raza'}) - {pet.age || 'Edad no indicada'}
+                  {/* COLUMNA DERECHA: PANEL DE CONTENIDO ACTIVO */}
+                  <div className="lg:col-span-8 space-y-6 min-h-[45vh]">
+                    
+                    {/* TAB: RESUMEN */}
+                    {selectedClientTab === 'resumen' && (
+                      <div className="space-y-6">
+                        <div className="flex flex-wrap justify-between items-center gap-4 border-b border-outline-variant/10 pb-3">
+                          <h4 className="text-lg font-bold text-primary flex items-center gap-2">
+                            <span className="material-symbols-outlined text-xl">dashboard</span>
+                            Resumen Operativo del Cliente
+                          </h4>
+                          {selectedClient.phone && (
+                            <a
+                              href={generateWhatsAppLink(selectedClient.phone, `¡Hola ${selectedClient.name}! Soy de Eris Pet Care.`)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="bg-[#25D366] text-white text-xs font-bold px-4 py-2 rounded-xl hover:bg-[#1DA851] transition-colors flex items-center gap-1.5 shadow-sm"
+                            >
+                              <span className="material-symbols-outlined text-sm">chat</span>
+                              Chatear
+                            </a>
+                          )}
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div className="bg-emerald-50/40 border border-emerald-100 p-5 rounded-2xl">
+                            <p className="text-[10px] font-bold text-emerald-800/70 uppercase tracking-wider">Total Facturado</p>
+                            <p className="text-3xl font-bold text-emerald-950 mt-1">{totalSpent} €</p>
+                            <p className="text-[10px] text-emerald-800/80 mt-1">Suma de reservas aceptadas y manuales.</p>
+                          </div>
+                          <div className="bg-primary/[0.03] border border-outline/10 p-5 rounded-2xl">
+                            <p className="text-[10px] font-bold text-primary/80 uppercase tracking-wider">Contacto de Emergencia</p>
+                            <p className="text-sm font-bold text-primary mt-1">{selectedClient.emergencyContact || 'No registrado'}</p>
+                            <p className="text-[10px] text-on-surface-variant/70 mt-1">Disponible en caso de incidentes médicos.</p>
+                          </div>
+                        </div>
+
+                        <div className="bg-surface-container-low p-6 rounded-3xl border border-outline-variant/10 space-y-4">
+                          <h5 className="font-bold text-primary text-sm">Información de Localización e Instrucciones</h5>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                            <div>
+                              <p className="font-bold text-on-surface-variant/60 uppercase tracking-wider">Dirección de Residencia</p>
+                              <p className="text-on-surface mt-1">{selectedClient.address || 'Sin dirección declarada en la ficha.'}</p>
+                            </div>
+                            <div>
+                              <p className="font-bold text-on-surface-variant/60 uppercase tracking-wider">Etiquetas / Tags de Interés</p>
+                              <div className="flex flex-wrap gap-1 mt-1.5">
+                                <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${
+                                  selectedClient.status === 'ACTIVE' ? 'bg-green-100 text-green-800' : 'bg-rose-100 text-rose-800'
+                                }`}>
+                                  {selectedClient.status || 'ACTIVE'}
+                                </span>
+                                {selectedClient.tags && selectedClient.tags.split(',').map((tag, idx) => (
+                                  <span key={idx} className="px-2 py-0.5 bg-primary/10 text-primary border border-primary/20 rounded text-[9px] font-bold">
+                                    {tag.trim()}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {selectedClient.notes && (
+                          <div className="bg-amber-50/40 border border-amber-100 p-5 rounded-2xl">
+                            <h5 className="text-xs font-bold text-amber-800 uppercase tracking-wider flex items-center gap-1.5 mb-2">
+                              <span className="material-symbols-outlined text-sm">warning</span>
+                              Observaciones Generales de la Sitter
                             </h5>
-                            <span className="text-[10px] font-bold bg-white border border-outline-variant/20 px-2 py-0.5 rounded text-on-surface-variant">
-                              Vacunas: {pet.vaccinationStatus || 'Desconocido'}
-                            </span>
-                          </div>
-                          <div className="grid grid-cols-2 gap-3 text-xs">
-                            <div>
-                              <p className="font-bold text-on-surface-variant/60 uppercase tracking-wider">Nº Microchip</p>
-                              <p className="font-semibold mt-0.5">{pet.microchip || 'No indicado'}</p>
-                            </div>
-                            <div>
-                              <p className="font-bold text-on-surface-variant/60 uppercase tracking-wider">Seguro / Póliza</p>
-                              <p className="font-semibold mt-0.5">{pet.insuranceInfo || 'No indicado'}</p>
-                            </div>
-                            <div className="col-span-2">
-                              <p className="font-bold text-on-surface-variant/60 uppercase tracking-wider">Clínica Veterinaria</p>
-                              <p className="font-semibold mt-0.5">{pet.vetName ? `${pet.vetName} (${pet.vetPhone || 'S/T'})` : 'No indicada'}</p>
-                            </div>
-                            <div className="col-span-2">
-                              <p className="font-bold text-on-surface-variant/60 uppercase tracking-wider">Dieta / Comidas</p>
-                              <p className="text-on-surface-variant mt-0.5">{pet.diet || 'No indicada'}</p>
-                            </div>
-                            <div className="col-span-2">
-                              <p className="font-bold text-on-surface-variant/60 uppercase tracking-wider">Notas Clínicas o Médicas</p>
-                              <p className="text-on-surface-variant mt-0.5">{pet.medicalNotes || 'Sin notas clínicas'}</p>
-                            </div>
-                            <div className="col-span-2">
-                              <p className="font-bold text-on-surface-variant/60 uppercase tracking-wider">Comportamiento / Notas Conducta</p>
-                              <p className="text-on-surface-variant mt-0.5">{pet.behaviorNotes || 'Sin notas de conducta'}</p>
-                            </div>
-                          </div>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </div>
-
-                {/* Historial / Timeline de Interacciones */}
-                <div className="space-y-6">
-                  <h4 className="font-bold text-primary text-base flex items-center gap-2">
-                    <span className="material-symbols-outlined text-sm">history</span>
-                    Historial de Interacciones
-                  </h4>
-
-                  {/* Formulario añadir nota */}
-                  <form onSubmit={handleCreateInteraction} className="bg-surface-container-low p-5 rounded-3xl border border-outline-variant/10 space-y-4">
-                    <div className="flex gap-3">
-                      <select
-                        value={newInteractionType}
-                        onChange={(e) => setNewInteractionType(e.target.value)}
-                        className="bg-white border border-outline-variant/30 rounded-xl p-2.5 text-xs font-semibold focus:ring-primary focus:border-primary text-on-surface-variant"
-                      >
-                        <option value="NOTA">NOTA</option>
-                        <option value="LLAMADA">LLAMADA</option>
-                        <option value="WHATSAPP">WHATSAPP</option>
-                        <option value="EMAIL">EMAIL</option>
-                      </select>
-                      <input
-                        type="text"
-                        placeholder="Añadir nota o registro al historial..."
-                        value={newInteractionContent}
-                        onChange={(e) => setNewInteractionContent(e.target.value)}
-                        className="flex-1 bg-white border border-outline-variant/30 rounded-xl p-2.5 text-xs font-semibold focus:ring-primary focus:border-primary"
-                        required
-                      />
-                      <button
-                        type="submit"
-                        className="bg-primary text-white text-xs font-bold px-4 py-2.5 rounded-xl hover:scale-[0.98] transition-transform flex items-center justify-center animate-fade-in"
-                      >
-                        <span className="material-symbols-outlined text-sm">add</span>
-                      </button>
-                    </div>
-                  </form>
-
-                  {/* Lista de interacciones */}
-                  <div className="space-y-4 max-h-[40vh] overflow-y-auto pr-2">
-                    {interactions.map(interaction => {
-                      const icons = {
-                        NOTA: 'description',
-                        LLAMADA: 'call',
-                        WHATSAPP: 'chat',
-                        EMAIL: 'mail'
-                      };
-                      return (
-                        <div key={interaction.id} className="flex gap-3 p-4 bg-background border border-outline-variant/10 rounded-2xl">
-                          <div className="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center shrink-0">
-                            <span className="material-symbols-outlined text-primary text-sm">{icons[interaction.type] || 'info'}</span>
-                          </div>
-                          <div className="flex-1">
-                            <div className="flex justify-between items-center">
-                              <span className="text-[10px] font-bold text-primary uppercase tracking-wider">{interaction.type}</span>
-                              <span className="text-[10px] text-on-surface-variant/60">{new Date(interaction.createdAt).toLocaleString()}</span>
-                            </div>
-                            <p className="text-xs text-on-surface-variant mt-1 leading-relaxed">
-                              {interaction.content}
+                            <p className="text-xs text-amber-900 leading-relaxed italic">
+                              "{selectedClient.notes}"
                             </p>
                           </div>
-                        </div>
-                      );
-                    })}
-                    {interactions.length === 0 && (
-                      <p className="text-xs text-on-surface-variant/60 italic text-center py-6">Sin interacciones registradas.</p>
+                        )}
+                      </div>
                     )}
+
+                    {/* TAB: MASCOTAS */}
+                    {selectedClientTab === 'mascotas' && (
+                      <div className="space-y-6">
+                        <h4 className="text-lg font-bold text-primary flex items-center gap-2 border-b border-outline-variant/10 pb-3">
+                          <span className="material-symbols-outlined text-xl">pets</span>
+                          Ficha Médica de Mascotas
+                        </h4>
+                        
+                        {selectedClient.pets.length === 0 ? (
+                          <p className="text-xs text-on-surface-variant/60 italic text-center py-10">No hay mascotas asociadas a este propietario.</p>
+                        ) : (
+                          <div className="space-y-4">
+                            {selectedClient.pets.map(pet => (
+                              <div key={pet.id} className="bg-surface-container-low p-6 rounded-3xl border border-outline-variant/10 space-y-4">
+                                <div className="flex justify-between items-center border-b border-outline-variant/10 pb-2">
+                                  <h5 className="font-bold text-primary text-sm flex items-center gap-1.5">
+                                    <span className="material-symbols-outlined text-sm">
+                                      {pet.type.toLowerCase().includes('perro') ? 'pets' : 'cat'}
+                                    </span>
+                                    {pet.name} ({pet.breed || 'Sin raza'}) - {pet.age || 'Edad no indicada'}
+                                  </h5>
+                                  <span className="text-[10px] font-bold bg-white border border-outline-variant/20 px-2 py-0.5 rounded text-on-surface-variant">
+                                    Vacunas: {pet.vaccinationStatus || 'Desconocido'}
+                                  </span>
+                                </div>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                                  <div>
+                                    <p className="font-bold text-on-surface-variant/60 uppercase tracking-wider">Nº Microchip</p>
+                                    <p className="font-semibold mt-0.5">{pet.microchip || 'No indicado'}</p>
+                                  </div>
+                                  <div>
+                                    <p className="font-bold text-on-surface-variant/60 uppercase tracking-wider">Seguro / Póliza</p>
+                                    <p className="font-semibold mt-0.5">{pet.insuranceInfo || 'No indicado'}</p>
+                                  </div>
+                                  <div className="col-span-2">
+                                    <p className="font-bold text-on-surface-variant/60 uppercase tracking-wider">Clínica Veterinaria</p>
+                                    <p className="font-semibold mt-0.5">{pet.vetName ? `${pet.vetName} (${pet.vetPhone || 'S/T'})` : 'No indicada'}</p>
+                                  </div>
+                                  <div className="col-span-2">
+                                    <p className="font-bold text-on-surface-variant/60 uppercase tracking-wider">Dieta / Comidas</p>
+                                    <p className="text-on-surface-variant mt-0.5">{pet.diet || 'No indicada'}</p>
+                                  </div>
+                                  <div className="col-span-2">
+                                    <p className="font-bold text-on-surface-variant/60 uppercase tracking-wider">Notas Clínicas o Médicas</p>
+                                    <p className="text-on-surface-variant mt-0.5">{pet.medicalNotes || 'Sin notas clínicas'}</p>
+                                  </div>
+                                  <div className="col-span-2">
+                                    <p className="font-bold text-on-surface-variant/60 uppercase tracking-wider">Comportamiento / Notas Conducta</p>
+                                    <p className="text-on-surface-variant mt-0.5">{pet.behaviorNotes || 'Sin notas de conducta'}</p>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* TAB: RESERVAS */}
+                    {selectedClientTab === 'reservas' && (
+                      <div className="space-y-6">
+                        <h4 className="text-lg font-bold text-primary flex items-center gap-2 border-b border-outline-variant/10 pb-3">
+                          <span className="material-symbols-outlined text-xl">calendar_month</span>
+                          Historial de Estancias y Reservas
+                        </h4>
+
+                        {clientBookings.length === 0 ? (
+                          <p className="text-xs text-on-surface-variant/60 italic text-center py-10">No hay reservas registradas para este cliente.</p>
+                        ) : (
+                          <div className="space-y-3 max-h-[45vh] overflow-y-auto pr-2">
+                            {clientBookings.map(b => (
+                              <div key={b.id} className="p-4 bg-surface-container-low border border-outline-variant/10 rounded-2xl flex items-center justify-between gap-4">
+                                <div className="space-y-1">
+                                  <div className="flex items-center gap-2">
+                                    <p className="text-xs font-bold text-primary">{b.service} ({b.petType})</p>
+                                    <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase ${
+                                      b.status === 'ACEPTADA' ? 'bg-emerald-100 text-emerald-800' :
+                                      b.status === 'PENDIENTE' ? 'bg-orange-100 text-orange-800' : 'bg-rose-100 text-rose-800'
+                                    }`}>
+                                      {b.status}
+                                    </span>
+                                  </div>
+                                  <p className="text-[10px] text-on-surface-variant/80">Estancia: {b.startDate} al {b.endDate}</p>
+                                </div>
+                                <div className="text-right text-xs">
+                                  <p className="font-bold text-primary">{b.price ? `${b.price} €` : 'No calculado'}</p>
+                                  <span className={`inline-block px-1.5 py-0.5 rounded text-[8px] font-bold uppercase mt-0.5 ${
+                                    b.paymentStatus === 'PAGADO' ? 'bg-emerald-100 text-emerald-800' :
+                                    b.paymentStatus === 'SEÑA' ? 'bg-sky-100 text-sky-800' : 'bg-rose-100 text-rose-800'
+                                  }`}>
+                                    {b.paymentStatus || 'PENDIENTE'}
+                                  </span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* TAB: INTERACCIONES */}
+                    {selectedClientTab === 'interacciones' && (
+                      <div className="space-y-6">
+                        <h4 className="text-lg font-bold text-primary flex items-center gap-2 border-b border-outline-variant/10 pb-3">
+                          <span className="material-symbols-outlined text-xl">history</span>
+                          Línea de Tiempo de Interacciones
+                        </h4>
+
+                        {/* Formulario añadir nota */}
+                        <form onSubmit={handleCreateInteraction} className="bg-surface-container-low p-4 rounded-2xl border border-outline-variant/10 space-y-3">
+                          <p className="text-[10px] font-bold text-primary uppercase tracking-wider">Añadir nueva nota rápida</p>
+                          <div className="flex gap-2">
+                            <select
+                              value={newInteractionType}
+                              onChange={(e) => setNewInteractionType(e.target.value)}
+                              className="bg-white border border-outline-variant/30 rounded-xl p-2.5 text-xs font-semibold focus:ring-primary focus:border-primary text-on-surface-variant"
+                            >
+                              <option value="NOTA">NOTA</option>
+                              <option value="LLAMADA">LLAMADA</option>
+                              <option value="WHATSAPP">WHATSAPP</option>
+                              <option value="EMAIL">EMAIL</option>
+                            </select>
+                            <input
+                              type="text"
+                              placeholder="Describe la llamada, acuerdo o nota de la mascota..."
+                              value={newInteractionContent}
+                              onChange={(e) => setNewInteractionContent(e.target.value)}
+                              className="flex-1 bg-white border border-outline-variant/30 rounded-xl p-2.5 text-xs font-semibold focus:ring-primary focus:border-primary"
+                              required
+                            />
+                            <button
+                              type="submit"
+                              className="bg-primary text-white text-xs font-bold px-4 py-2.5 rounded-xl hover:scale-[0.98] transition-transform flex items-center justify-center"
+                            >
+                              <span className="material-symbols-outlined text-sm">add</span>
+                            </button>
+                          </div>
+                        </form>
+
+                        {/* Lista de interacciones */}
+                        <div className="space-y-3 max-h-[35vh] overflow-y-auto pr-2">
+                          {interactions.map(interaction => {
+                            const icons = {
+                              NOTA: 'description',
+                              LLAMADA: 'call',
+                              WHATSAPP: 'chat',
+                              EMAIL: 'mail'
+                            };
+                            return (
+                              <div key={interaction.id} className="flex gap-3 p-4 bg-background border border-outline-variant/10 rounded-2xl">
+                                <div className="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center shrink-0">
+                                  <span className="material-symbols-outlined text-primary text-xs">{icons[interaction.type] || 'info'}</span>
+                                </div>
+                                <div className="flex-1">
+                                  <div className="flex justify-between items-center">
+                                    <span className="text-[9px] font-bold text-primary uppercase tracking-wider">{interaction.type}</span>
+                                    <span className="text-[9px] text-on-surface-variant/60">{new Date(interaction.createdAt).toLocaleString()}</span>
+                                  </div>
+                                  <p className="text-xs text-on-surface-variant mt-1 leading-relaxed">
+                                    {interaction.content}
+                                  </p>
+                                </div>
+                              </div>
+                            );
+                          })}
+                          {interactions.length === 0 && (
+                            <p className="text-xs text-on-surface-variant/60 italic text-center py-6">Sin interacciones registradas.</p>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
                   </div>
                 </div>
+
               </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
       </main>
+
+      {/* BOTTOM NAVIGATION BAR (Solo Cuidados) */}
+      {workMode === 'CARE' && (
+        <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-outline-variant/20 shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.15)] z-50 flex justify-around items-center p-3 sm:px-10 pb-6 md:pb-6">
+          <button onClick={() => setActiveTab('tasks')} className={`flex flex-col items-center p-2 rounded-xl transition-all min-w-[72px] ${activeTab === 'tasks' ? 'text-emerald-600 bg-emerald-50 scale-105' : 'text-on-surface-variant hover:bg-surface-container'}`}>
+            <span className="material-symbols-outlined text-3xl mb-1">event_note</span>
+            <span className="text-[10px] font-bold uppercase tracking-wider">Tareas</span>
+          </button>
+          
+          <button onClick={() => setActiveTab('crm')} className={`flex flex-col items-center p-2 rounded-xl transition-all min-w-[72px] ${activeTab === 'crm' ? 'text-emerald-600 bg-emerald-50 scale-105' : 'text-on-surface-variant hover:bg-surface-container'}`}>
+            <span className="material-symbols-outlined text-3xl mb-1">contacts</span>
+            <span className="text-[10px] font-bold uppercase tracking-wider">CRM</span>
+          </button>
+          
+          <button onClick={() => setActiveTab('bookings')} className={`flex flex-col items-center p-2 rounded-xl transition-all min-w-[72px] ${activeTab === 'bookings' ? 'text-emerald-600 bg-emerald-50 scale-105' : 'text-on-surface-variant hover:bg-surface-container'}`}>
+            <span className="material-symbols-outlined text-3xl mb-1">forum</span>
+            <span className="text-[10px] font-bold uppercase tracking-wider">Reservas</span>
+          </button>
+
+          <button onClick={() => setActiveTab('planner')} className={`flex flex-col items-center p-2 rounded-xl transition-all min-w-[72px] ${activeTab === 'planner' ? 'text-emerald-600 bg-emerald-50 scale-105' : 'text-on-surface-variant hover:bg-surface-container'}`}>
+            <span className="material-symbols-outlined text-3xl mb-1">calendar_month</span>
+            <span className="text-[10px] font-bold uppercase tracking-wider">Planner</span>
+          </button>
+          
+          <div className="w-[1px] h-10 bg-outline-variant/20 mx-2 hidden sm:block"></div>
+          
+          <button onClick={() => { setWorkMode('RECEPTION'); setActiveTab('bookings'); }} className="flex flex-col items-center p-2 rounded-xl text-rose-600 hover:bg-rose-50 transition-all min-w-[72px]">
+            <span className="material-symbols-outlined text-3xl mb-1">storefront</span>
+            <span className="text-[10px] font-bold uppercase tracking-wider">Mostrador</span>
+          </button>
+        </nav>
+      )}
+
     </div>
   );
 }

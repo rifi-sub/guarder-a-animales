@@ -11,6 +11,7 @@ import Reviews from './components/Reviews'
 import ContactForm from './components/ContactForm'
 import Footer from './components/Footer'
 import AdminPanel from './components/AdminPanel'
+import ClientPortal from './components/ClientPortal'
 
 function App() {
   const [currentPath, setCurrentPath] = useState(window.location.pathname);
@@ -29,6 +30,10 @@ function App() {
 
   if (currentPath === '/admin') {
     return <AdminPanel />;
+  }
+  
+  if (currentPath === '/portal') {
+    return <ClientPortal />;
   }
 
   return (

@@ -18,6 +18,10 @@ export default function ContactForm() {
   const [estimatedPrice, setEstimatedPrice] = useState(null);
   const [status, setStatus] = useState('idle'); // idle, submitting, success, error
   const [errorMessage, setErrorMessage] = useState('');
+  const [submittedEmail, setSubmittedEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [registerStatus, setRegisterStatus] = useState('idle'); // idle, submitting, success, error
+  const [registerError, setRegisterError] = useState('');
 
   // Cargar tarifas de servicios al montar
   useEffect(() => {
@@ -92,6 +96,7 @@ export default function ContactForm() {
         throw new Error(data.error || 'Algo salió mal al enviar la solicitud');
       }
       setStatus('success');
+      setSubmittedEmail(formData.email);
       setFormData({
         name: '',
         email: '',
@@ -107,6 +112,29 @@ export default function ContactForm() {
       console.error(err);
       setStatus('error');
       setErrorMessage(err.message || 'Error de conexión con el servidor.');
+    }
+  };
+
+  const handleRegisterClient = async (e) => {
+    e.preventDefault();
+    setRegisterStatus('submitting');
+    setRegisterError('');
+    try {
+      const res = await fetch(`${API_BASE}/api/auth/register-client`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: submittedEmail, password })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Error al crear la cuenta');
+      
+      setRegisterStatus('success');
+      // Podríamos guardar el token y redirigir al portal, o simplemente avisar
+      localStorage.setItem('clientToken', data.token);
+    } catch (err) {
+      console.error(err);
+      setRegisterStatus('error');
+      setRegisterError(err.message || 'No se pudo crear la cuenta.');
     }
   };
 
@@ -155,11 +183,53 @@ export default function ContactForm() {
           <div className="bg-surface-container-low rounded-[2.5rem] p-8 md:p-12">
             <form onSubmit={handleSubmit} className="space-y-6">
               {status === 'success' && (
-                <div className="p-4 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-2xl flex items-start gap-3">
-                  <span className="material-symbols-outlined text-emerald-600 shrink-0">check_circle</span>
-                  <div>
-                    <p className="font-bold">¡Solicitud enviada con éxito!</p>
-                    <p className="text-sm">Eris te responderá lo antes posible para concretar vuestro primer encuentro.</p>
+                <div className="p-6 bg-emerald-50 border border-emerald-200 rounded-3xl space-y-4">
+                  <div className="flex items-start gap-3 text-emerald-800">
+                    <span className="material-symbols-outlined text-emerald-600 shrink-0">check_circle</span>
+                    <div>
+                      <p className="font-bold text-lg">¡Solicitud enviada con éxito!</p>
+                      <p className="text-sm mt-1">Eris te responderá lo antes posible para concretar vuestro primer encuentro.</p>
+                    </div>
+                  </div>
+                  
+                  <div className="bg-white rounded-2xl p-5 border border-emerald-100 shadow-sm mt-4">
+                    <h3 className="font-bold text-primary mb-2 flex items-center gap-2">
+                      <span className="material-symbols-outlined text-lg">person_add</span>
+                      Crea tu Espacio de Cliente
+                    </h3>
+                    <p className="text-xs text-on-surface-variant mb-4">
+                      ¿Quieres guardar la cartilla de tu mascota y ver el estado de tus reservas? Crea una cuenta gratis usando el email de tu reserva ({submittedEmail}).
+                    </p>
+                    
+                    {registerStatus === 'success' ? (
+                      <div className="text-sm font-bold text-emerald-600 flex items-center gap-2 bg-emerald-50 p-3 rounded-xl">
+                        <span className="material-symbols-outlined">how_to_reg</span>
+                        ¡Cuenta creada! Puedes iniciar sesión en el portal.
+                      </div>
+                    ) : (
+                      <div className="flex flex-col sm:flex-row gap-3">
+                        <input
+                          type="password"
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                          placeholder="Elige una contraseña"
+                          required
+                          minLength="6"
+                          className="flex-1 bg-surface-container-low border-outline-variant/30 rounded-xl p-3 text-sm focus:ring-primary focus:border-primary"
+                        />
+                        <button
+                          type="button"
+                          onClick={handleRegisterClient}
+                          disabled={registerStatus === 'submitting'}
+                          className="bg-primary text-white px-5 py-3 rounded-xl text-sm font-bold hover:bg-primary/90 transition-colors disabled:opacity-50"
+                        >
+                          {registerStatus === 'submitting' ? 'Creando...' : 'Crear Cuenta'}
+                        </button>
+                      </div>
+                    )}
+                    {registerStatus === 'error' && (
+                      <p className="text-xs text-rose-600 font-bold mt-2">{registerError}</p>
+                    )}
                   </div>
                 </div>
               )}

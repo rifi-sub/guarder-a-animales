@@ -35,12 +35,21 @@ export default function Navbar() {
         <a className="text-on-surface-variant hover:text-primary transition-colors" href="#reseñas">Reseñas</a>
         <a className="text-on-surface-variant hover:text-primary transition-colors" href="#contacto">Contacto</a>
       </div>
-      <button
-        onClick={() => document.getElementById('contacto')?.scrollIntoView({ behavior: 'smooth' })}
-        className="bg-terracota text-white px-6 py-2.5 rounded-full font-bold hover:scale-95 transition-transform"
-      >
-        Reservar guardería
-      </button>
+      <div className="flex items-center gap-4">
+        <a 
+          href="/portal"
+          className="hidden md:flex items-center gap-1.5 text-xs font-bold text-on-surface-variant hover:text-primary transition-colors"
+        >
+          <span className="material-symbols-outlined text-[16px]">account_circle</span>
+          Área Cliente
+        </a>
+        <button
+          onClick={() => document.getElementById('contacto')?.scrollIntoView({ behavior: 'smooth' })}
+          className="bg-terracota text-white px-6 py-2.5 rounded-full font-bold hover:scale-95 transition-transform"
+        >
+          Reservar guardería
+        </button>
+      </div>
     </nav>
   );
 }

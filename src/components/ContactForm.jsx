@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? '' : 'https://alilyback.duckdns.org/eris';
 
@@ -14,8 +14,55 @@ export default function ContactForm() {
     message: ''
   });
 
+  const [rates, setRates] = useState([]);
+  const [estimatedPrice, setEstimatedPrice] = useState(null);
   const [status, setStatus] = useState('idle'); // idle, submitting, success, error
   const [errorMessage, setErrorMessage] = useState('');
+
+  // Cargar tarifas de servicios al montar
+  useEffect(() => {
+    fetchRates();
+  }, []);
+
+  const fetchRates = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/api/rates`);
+      if (res.ok) {
+        setRates(await res.json());
+      }
+    } catch (err) {
+      console.error('Error fetching rates:', err);
+    }
+  };
+
+  // Calcular precio estimado dinámicamente
+  useEffect(() => {
+    if (formData.startDate && formData.endDate && rates.length > 0) {
+      // Intentar buscar la tarifa para el servicio
+      const rate = rates.find(r => r.serviceName.toLowerCase() === formData.service.toLowerCase());
+      if (rate) {
+        const start = new Date(formData.startDate);
+        const end = new Date(formData.endDate);
+        const timeDiff = end.getTime() - start.getTime();
+        
+        if (timeDiff >= 0) {
+          const diffInDays = Math.ceil(timeDiff / (1000 * 3600 * 24)) + 1;
+          // Si el servicio es Alojamiento, calculamos Noches, si no, calculamos Días
+          const count = formData.service.toLowerCase().includes('alojamiento')
+            ? Math.max(1, diffInDays - 1)
+            : diffInDays;
+          
+          setEstimatedPrice(count * rate.ratePerUnit);
+        } else {
+          setEstimatedPrice(null);
+        }
+      } else {
+        setEstimatedPrice(null);
+      }
+    } else {
+      setEstimatedPrice(null);
+    }
+  }, [formData.startDate, formData.endDate, formData.service, rates]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -27,12 +74,18 @@ export default function ContactForm() {
     setStatus('submitting');
     setErrorMessage('');
     try {
+      const payload = {
+        ...formData,
+        price: estimatedPrice,
+        source: 'WEB'
+      };
+
       const res = await fetch(`${API_BASE}/api/bookings`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -49,6 +102,7 @@ export default function ContactForm() {
         endDate: '',
         message: ''
       });
+      setEstimatedPrice(null);
     } catch (err) {
       console.error(err);
       setStatus('error');
@@ -162,7 +216,7 @@ export default function ContactForm() {
                     name="petType"
                     value={formData.petType}
                     onChange={handleChange}
-                    className="w-full bg-white border-outline-variant/30 rounded-2xl p-4 focus:ring-primary focus:border-primary text-on-surface-variant"
+                    className="w-full bg-white border-outline-variant/30 rounded-2xl p-4 focus:ring-primary focus:border-primary text-on-surface-variant text-sm"
                   >
                     <option>Gato</option>
                     <option>Perro (Paseo/Visita)</option>
@@ -178,12 +232,12 @@ export default function ContactForm() {
                     name="service"
                     value={formData.service}
                     onChange={handleChange}
-                    className="w-full bg-white border-outline-variant/30 rounded-2xl p-4 focus:ring-primary focus:border-primary text-on-surface-variant"
+                    className="w-full bg-white border-outline-variant/30 rounded-2xl p-4 focus:ring-primary focus:border-primary text-on-surface-variant text-sm"
                   >
-                    <option>Guardería en mi hogar</option>
-                    <option>Cuidado a domicilio</option>
-                    <option>Visitas</option>
-                    <option>Paseos</option>
+                    <option value="Alojamiento">Alojamiento</option>
+                    <option value="Guardería en mi hogar">Guardería en mi hogar</option>
+                    <option value="Cuidado a domicilio">Cuidado a domicilio</option>
+                    <option value="Paseos">Paseos</option>
                   </select>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
@@ -217,17 +271,33 @@ export default function ContactForm() {
                   name="message"
                   value={formData.message}
                   onChange={handleChange}
-                  className="w-full bg-white border-outline-variant/30 rounded-2xl p-4 focus:ring-primary focus:border-primary"
+                  className="w-full bg-white border-outline-variant/30 rounded-2xl p-4 focus:ring-primary focus:border-primary text-sm"
                   placeholder="Cuéntame sobre tu mascota y lo que necesitas..."
                   rows="4"
                 ></textarea>
               </div>
+
+              {estimatedPrice !== null && (
+                <div className="p-5 bg-primary/[0.03] border border-outline/10 rounded-2xl flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-bold text-on-surface-variant/70 uppercase tracking-wider">Presupuesto Estimado</p>
+                    <p className="text-[11px] text-on-surface-variant/70 mt-1">
+                      Calculado según las tarifas de Eris
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-2xl font-display-md font-bold text-primary">{estimatedPrice} €</p>
+                    <p className="text-[9px] text-on-surface-variant/50 font-semibold">Pago en efectivo/Bizum (sin adelanto online)</p>
+                  </div>
+                </div>
+              )}
+
               <button
                 type="submit"
                 disabled={status === 'submitting'}
-                className="w-full bg-terracota text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-2 hover:scale-[0.98] transition-transform disabled:opacity-55 disabled:cursor-not-allowed"
+                className="w-full bg-terracota text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-2 hover:scale-[0.98] transition-transform disabled:opacity-55 disabled:cursor-not-allowed text-sm"
               >
-                <span className="material-symbols-outlined">
+                <span className="material-symbols-outlined text-sm">
                   {status === 'submitting' ? 'sync' : 'send'}
                 </span>
                 {status === 'submitting' ? 'Enviando...' : 'Enviar solicitud'}

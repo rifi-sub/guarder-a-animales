@@ -57,6 +57,21 @@ export default function AdminPanel() {
   const [newPetNotes, setNewPetNotes] = useState('');
   const [newPetClientId, setNewPetClientId] = useState('');
 
+  // Tarifas y cálculos
+  const [rates, setRates] = useState([]);
+
+  // Ficha de cliente seleccionada en CRM y sus interacciones
+  const [selectedClient, setSelectedClient] = useState(null);
+  const [interactions, setInteractions] = useState([]);
+  const [newInteractionType, setNewInteractionType] = useState('NOTA');
+  const [newInteractionContent, setNewInteractionContent] = useState('');
+
+  // Edición financiera de Reservas
+  const [editingBookingId, setEditingBookingId] = useState(null);
+  const [editingPrice, setEditingPrice] = useState('');
+  const [editingPaymentStatus, setEditingPaymentStatus] = useState('PENDIENTE');
+  const [editingPaymentMethod, setEditingPaymentMethod] = useState('');
+
   // Cargar datos al cambiar de pestaña o token
   useEffect(() => {
     if (token) {
@@ -118,6 +133,12 @@ export default function AdminPanel() {
           }
         }
       }
+
+      // 6. Tarifas de servicios (para configurador y presupuestos)
+      if (activeTab === 'rates' || activeTab === 'bookings') {
+        const resR = await fetch(`${API_BASE}/api/admin/rates`, { headers });
+        if (resR.ok) setRates(await resR.json());
+      }
     } catch (err) {
       console.error('Error fetching data:', err);
     }
@@ -149,6 +170,103 @@ export default function AdminPanel() {
   const handleLogout = () => {
     localStorage.removeItem('adminToken');
     setToken('');
+  };
+
+  // --- ACCIONES DE TARIFAS ---
+  const handleSaveRate = async (serviceName, ratePerUnit, unitType) => {
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/rates`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ serviceName, ratePerUnit: parseFloat(ratePerUnit), unitType })
+      });
+      if (res.ok) {
+        alert('Tarifa guardada correctamente.');
+        fetchData();
+      } else {
+        const data = await res.json();
+        alert(data.error || 'Error al guardar tarifa');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error de conexión');
+    }
+  };
+
+  // --- ACCIONES DE INTERACCIONES ---
+  const handleSelectClient = async (client) => {
+    setSelectedClient(client);
+    setNewInteractionContent('');
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/clients/${client.id}/interactions`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        setInteractions(await res.json());
+      }
+    } catch (err) {
+      console.error('Error fetching interactions:', err);
+    }
+  };
+
+  const handleCreateInteraction = async (e) => {
+    e.preventDefault();
+    if (!newInteractionContent || !selectedClient) return;
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/clients/${selectedClient.id}/interactions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ type: newInteractionType, content: newInteractionContent })
+      });
+      if (res.ok) {
+        setNewInteractionContent('');
+        // Recargar interacciones
+        handleSelectClient(selectedClient);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  // --- EDICIÓN FINANCIERA DE RESERVAS ---
+  const handleSaveBookingPayment = async (id) => {
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/bookings/${id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          price: editingPrice ? parseFloat(editingPrice) : null,
+          paymentStatus: editingPaymentStatus,
+          paymentMethod: editingPaymentMethod || null
+        })
+      });
+      if (res.ok) {
+        setEditingBookingId(null);
+        fetchData();
+      } else {
+        const data = await res.json();
+        alert(data.error || 'Error al guardar cambios de pago');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error de conexión');
+    }
+  };
+
+  const startEditingBooking = (booking) => {
+    setEditingBookingId(booking.id);
+    setEditingPrice(booking.price ? booking.price.toString() : '');
+    setEditingPaymentStatus(booking.paymentStatus || 'PENDIENTE');
+    setEditingPaymentMethod(booking.paymentMethod || '');
   };
 
   // --- ACCIONES DE RESERVAS ---
@@ -550,6 +668,18 @@ export default function AdminPanel() {
               <span className="material-symbols-outlined">calendar_month</span>
               Disponibilidad Web
             </button>
+
+            <button
+              onClick={() => setActiveTab('rates')}
+              className={`w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl font-bold text-sm transition-all ${
+                activeTab === 'rates'
+                  ? 'bg-primary text-white shadow-md'
+                  : 'text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface'
+              }`}
+            >
+              <span className="material-symbols-outlined">payments</span>
+              Configurar Tarifas
+            </button>
           </nav>
         </div>
 
@@ -651,6 +781,94 @@ export default function AdminPanel() {
                         </div>
                       </div>
 
+                      {/* INFORMACIÓN DE PRECIOS Y PAGOS */}
+                      {editingBookingId === booking.id ? (
+                        <div className="bg-surface-container p-5 rounded-2xl border border-primary/20 space-y-4">
+                          <p className="text-xs font-bold text-primary uppercase tracking-wider">Editar Datos de Pago</p>
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                            <div className="space-y-1">
+                              <label className="text-[10px] text-on-surface-variant uppercase tracking-widest font-bold">Importe (€)</label>
+                              <input
+                                type="number"
+                                value={editingPrice}
+                                onChange={(e) => setEditingPrice(e.target.value)}
+                                className="w-full bg-white border border-outline-variant/30 rounded-xl p-2.5 text-xs font-semibold focus:ring-primary focus:border-primary text-right"
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <label className="text-[10px] text-on-surface-variant uppercase tracking-widest font-bold">Estado de Pago</label>
+                              <select
+                                value={editingPaymentStatus}
+                                onChange={(e) => setEditingPaymentStatus(e.target.value)}
+                                className="w-full bg-white border border-outline-variant/30 rounded-xl p-2.5 text-xs font-semibold focus:ring-primary focus:border-primary text-on-surface-variant"
+                              >
+                                <option value="PENDIENTE">PENDIENTE</option>
+                                <option value="SEÑA">SEÑA RECIBIDA</option>
+                                <option value="PAGADO">PAGADO</option>
+                              </select>
+                            </div>
+                            <div className="space-y-1">
+                              <label className="text-[10px] text-on-surface-variant uppercase tracking-widest font-bold">Método de Pago</label>
+                              <select
+                                value={editingPaymentMethod}
+                                onChange={(e) => setEditingPaymentMethod(e.target.value)}
+                                className="w-full bg-white border border-outline-variant/30 rounded-xl p-2.5 text-xs font-semibold focus:ring-primary focus:border-primary text-on-surface-variant"
+                              >
+                                <option value="">Sin definir</option>
+                                <option value="BIZUM">BIZUM</option>
+                                <option value="TRANSFERENCIA">TRANSFERENCIA</option>
+                                <option value="EFECTIVO">EFECTIVO</option>
+                              </select>
+                            </div>
+                          </div>
+                          <div className="flex justify-end gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setEditingBookingId(null)}
+                              className="px-4 py-2 border border-outline-variant/30 rounded-lg text-xs font-semibold text-on-surface-variant hover:bg-surface-container-high transition-colors"
+                            >
+                              Cancelar
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleSaveBookingPayment(booking.id)}
+                              className="px-4 py-2 bg-primary text-white rounded-lg text-xs font-semibold hover:scale-[0.98] transition-transform"
+                            >
+                              Guardar Cambios
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-xs bg-surface-container-low/50 p-4 rounded-2xl border border-outline-variant/5">
+                          <div>
+                            <p className="text-[10px] text-on-surface-variant uppercase tracking-widest font-bold">Presupuesto</p>
+                            <p className="font-bold text-primary text-sm mt-0.5">{booking.price ? `${booking.price} €` : 'No calculado'}</p>
+                          </div>
+                          <div>
+                            <p className="text-[10px] text-on-surface-variant uppercase tracking-widest font-bold">Estado de Pago</p>
+                            <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-wide uppercase mt-1 ${
+                              booking.paymentStatus === 'PAGADO' ? 'bg-emerald-100 text-emerald-800' :
+                              booking.paymentStatus === 'SEÑA' ? 'bg-sky-100 text-sky-800' : 'bg-rose-100 text-rose-800'
+                            }`}>
+                              {booking.paymentStatus || 'PENDIENTE'}
+                            </span>
+                          </div>
+                          <div>
+                            <p className="text-[10px] text-on-surface-variant uppercase tracking-widest font-bold">Método</p>
+                            <p className="font-semibold text-on-surface mt-0.5">{booking.paymentMethod || 'No indicado'}</p>
+                          </div>
+                          <div>
+                            <p className="text-[10px] text-on-surface-variant uppercase tracking-widest font-bold">Origen / Canal</p>
+                            <p className="font-semibold text-on-surface mt-0.5 flex items-center gap-1">
+                              <span className="material-symbols-outlined text-[12px]">
+                                {booking.source === 'WHATSAPP' ? 'chat' : 'language'}
+                              </span>
+                              {booking.source || 'WEB'}
+                            </p>
+                          </div>
+                        </div>
+                      )}
+
                       {booking.message && (
                         <div>
                           <p className="text-[10px] text-on-surface-variant uppercase tracking-widest font-bold mb-1">Mensaje</p>
@@ -680,13 +898,24 @@ export default function AdminPanel() {
                           </button>
                         </>
                       ) : (
-                        <button
-                          onClick={() => handleReopenBooking(booking.id)}
-                          className="w-full border border-outline-variant text-on-surface-variant text-xs font-bold px-4 py-2.5 rounded-xl hover:bg-surface-container transition-colors flex items-center justify-center gap-1.5"
-                        >
-                          <span className="material-symbols-outlined text-sm">settings_backup_restore</span>
-                          Reabrir solicitud
-                        </button>
+                        <>
+                          {editingBookingId !== booking.id && (
+                            <button
+                              onClick={() => startEditingBooking(booking)}
+                              className="w-full bg-primary/10 text-primary border border-primary/20 text-xs font-bold px-4 py-2.5 rounded-xl hover:bg-primary/20 transition-colors flex items-center justify-center gap-1.5"
+                            >
+                              <span className="material-symbols-outlined text-sm">payments</span>
+                              Editar Pago
+                            </button>
+                          )}
+                          <button
+                            onClick={() => handleReopenBooking(booking.id)}
+                            className="w-full border border-outline-variant text-on-surface-variant text-xs font-bold px-4 py-2.5 rounded-xl hover:bg-surface-container transition-colors flex items-center justify-center gap-1.5"
+                          >
+                            <span className="material-symbols-outlined text-sm">settings_backup_restore</span>
+                            Reabrir solicitud
+                          </button>
+                        </>
                       )}
                     </div>
                   </div>
@@ -804,19 +1033,32 @@ export default function AdminPanel() {
                           <h4 className="text-lg font-bold text-primary">{client.name}</h4>
                           <p className="text-xs text-on-surface-variant/70">{client.email} | Telf: {client.phone || 'No indicado'}</p>
                         </div>
-                        <span className="text-[10px] font-bold bg-surface-container px-3 py-1 rounded-full text-on-surface-variant">
-                          ID: #{client.id}
-                        </span>
+                        <div className="flex gap-2 items-center">
+                          <button
+                            type="button"
+                            onClick={() => handleSelectClient(client)}
+                            className="bg-primary/10 text-primary border border-primary/20 text-[10px] font-bold px-3 py-1.5 rounded-lg hover:bg-primary/20 transition-colors flex items-center gap-1"
+                          >
+                            <span className="material-symbols-outlined text-xs">history</span>
+                            Ficha & Notas
+                          </button>
+                          <span className="text-[10px] font-bold bg-surface-container px-3 py-1.5 rounded-lg text-on-surface-variant">
+                            ID: #{client.id}
+                          </span>
+                        </div>
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
                         <div>
-                          <p className="text-[9px] font-bold uppercase tracking-widest text-on-surface-variant/50">Contacto de Emergencia</p>
-                          <p className="text-sm font-semibold text-primary-container/95 mt-1">{client.emergencyContact || 'No registrado'}</p>
+                          <p className="text-[9px] font-bold uppercase tracking-widest text-on-surface-variant/50">Dirección y Canal Preferido</p>
+                          <p className="text-xs font-semibold text-primary/90 mt-1">
+                            {client.address || 'Sin dirección registrada'} 
+                            <span className="text-on-surface-variant/50 font-normal"> ({client.preferredChannel || 'WHATSAPP'})</span>
+                          </p>
                         </div>
                         <div>
-                          <p className="text-[9px] font-bold uppercase tracking-widest text-on-surface-variant/50">Notas</p>
-                          <p className="text-xs text-on-surface-variant mt-1">{client.notes || 'Sin observaciones'}</p>
+                          <p className="text-[9px] font-bold uppercase tracking-widest text-on-surface-variant/50">Contacto Emergencia</p>
+                          <p className="text-xs text-on-surface-variant mt-1">{client.emergencyContact || 'No registrado'}</p>
                         </div>
                       </div>
 
@@ -1302,8 +1544,266 @@ export default function AdminPanel() {
             </div>
           </div>
         )}
+        {/* TAB 6: CONFIGURAR TARIFAS */}
+        {activeTab === 'rates' && (
+          <div className="max-w-4xl mx-auto bg-white border border-outline-variant/20 p-8 md:p-12 rounded-[2.5rem] shadow-sm font-body-md text-on-surface">
+            <span className="text-xs font-bold uppercase tracking-widest text-terracota mb-3 block">PRECIOS Y SERVICIOS</span>
+            <h2 className="text-3xl font-bold text-primary mb-6 font-display-lg">Configuración de Tarifas</h2>
+            <p className="text-sm text-on-surface-variant mb-10 leading-relaxed">
+              Define los precios por unidad para cada uno de los servicios ofrecidos en tu web. Al actualizarlos, el calculador del formulario de contacto de los clientes mostrará los nuevos importes al instante.
+            </p>
+
+            <div className="space-y-6">
+              {rates.map((rate) => (
+                <RateRow
+                  key={rate.id}
+                  rate={rate}
+                  onSave={handleSaveRate}
+                />
+              ))}
+              {rates.length === 0 && (
+                <p className="text-sm text-on-surface-variant/70 italic text-center py-6">
+                  No hay tarifas configuradas en el servidor. Ejecuta el seeding de base de datos.
+                </p>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* MODAL FICHA 360 Y TIMELINE DE INTERACCIONES */}
+        {selectedClient && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fade-in">
+            <div className="bg-white rounded-[2.5rem] border border-outline-variant/15 w-full max-w-4xl max-h-[85vh] overflow-y-auto p-8 md:p-12 shadow-2xl relative">
+              {/* Botón cerrar */}
+              <button
+                type="button"
+                onClick={() => setSelectedClient(null)}
+                className="absolute right-6 top-6 w-10 h-10 rounded-full bg-surface-container hover:bg-surface-container-high flex items-center justify-center transition-colors"
+              >
+                <span className="material-symbols-outlined text-on-surface-variant">close</span>
+              </button>
+
+              <span className="text-xs font-bold uppercase tracking-widest text-terracota mb-3 block">FICHA 360 CLIENTE</span>
+              <h2 className="text-3xl font-bold text-primary mb-2 font-display-lg">{selectedClient.name}</h2>
+              <p className="text-xs text-on-surface-variant/70 mb-8 border-b border-outline-variant/10 pb-4">
+                Registrado en Eris CRM | Canal de comunicación preferido: <span className="font-bold text-primary">{selectedClient.preferredChannel || 'WHATSAPP'}</span>
+              </p>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+                {/* Datos del Cliente y sus Mascotas */}
+                <div className="space-y-6">
+                  <div className="bg-surface-container-low p-6 rounded-3xl border border-outline-variant/10 space-y-4">
+                    <h4 className="font-bold text-primary text-base flex items-center gap-2">
+                      <span className="material-symbols-outlined text-sm">contact_phone</span>
+                      Datos de Contacto
+                    </h4>
+                    <div className="grid grid-cols-2 gap-4 text-xs">
+                      <div>
+                        <p className="font-bold text-on-surface-variant/60 uppercase tracking-wider">Email</p>
+                        <p className="font-semibold mt-0.5 break-all">{selectedClient.email}</p>
+                      </div>
+                      <div>
+                        <p className="font-bold text-on-surface-variant/60 uppercase tracking-wider">Teléfono</p>
+                        <p className="font-semibold mt-0.5">{selectedClient.phone || 'No registrado'}</p>
+                      </div>
+                      <div className="col-span-2">
+                        <p className="font-bold text-on-surface-variant/60 uppercase tracking-wider">Dirección / Zona</p>
+                        <p className="font-semibold mt-0.5">{selectedClient.address || 'No registrada'}</p>
+                      </div>
+                      <div>
+                        <p className="font-bold text-on-surface-variant/60 uppercase tracking-wider">Contacto Emergencia</p>
+                        <p className="font-semibold mt-0.5">{selectedClient.emergencyContact || 'No registrado'}</p>
+                      </div>
+                      <div>
+                        <p className="font-bold text-on-surface-variant/60 uppercase tracking-wider">Estado / Etiquetas</p>
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${
+                            selectedClient.status === 'ACTIVE' ? 'bg-green-100 text-green-800' : 'bg-rose-100 text-rose-800'
+                          }`}>
+                            {selectedClient.status || 'ACTIVE'}
+                          </span>
+                          {selectedClient.tags && selectedClient.tags.split(',').map((tag, idx) => (
+                            <span key={idx} className="px-2 py-0.5 bg-primary/10 text-primary border border-primary/20 rounded text-[9px] font-bold">
+                              {tag.trim()}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Mascotas del Cliente */}
+                  <div className="space-y-4">
+                    <h4 className="font-bold text-primary text-base flex items-center gap-2">
+                      <span className="material-symbols-outlined text-sm">pets</span>
+                      Ficha Médica de Mascotas
+                    </h4>
+                    {selectedClient.pets.length === 0 ? (
+                      <p className="text-xs text-on-surface-variant/60 italic">No hay mascotas asociadas.</p>
+                    ) : (
+                      selectedClient.pets.map(pet => (
+                        <div key={pet.id} className="bg-surface-container-low p-6 rounded-3xl border border-outline-variant/10 space-y-3">
+                          <div className="flex justify-between items-center border-b border-outline-variant/10 pb-2">
+                            <h5 className="font-bold text-primary text-sm flex items-center gap-1.5">
+                              <span className="material-symbols-outlined text-sm">
+                                {pet.type.toLowerCase().includes('perro') ? 'pets' : 'cat'}
+                              </span>
+                              {pet.name} ({pet.breed || 'Sin raza'}) - {pet.age || 'Edad no indicada'}
+                            </h5>
+                            <span className="text-[10px] font-bold bg-white border border-outline-variant/20 px-2 py-0.5 rounded text-on-surface-variant">
+                              Vacunas: {pet.vaccinationStatus || 'Desconocido'}
+                            </span>
+                          </div>
+                          <div className="grid grid-cols-2 gap-3 text-xs">
+                            <div>
+                              <p className="font-bold text-on-surface-variant/60 uppercase tracking-wider">Nº Microchip</p>
+                              <p className="font-semibold mt-0.5">{pet.microchip || 'No indicado'}</p>
+                            </div>
+                            <div>
+                              <p className="font-bold text-on-surface-variant/60 uppercase tracking-wider">Seguro / Póliza</p>
+                              <p className="font-semibold mt-0.5">{pet.insuranceInfo || 'No indicado'}</p>
+                            </div>
+                            <div className="col-span-2">
+                              <p className="font-bold text-on-surface-variant/60 uppercase tracking-wider">Clínica Veterinaria</p>
+                              <p className="font-semibold mt-0.5">{pet.vetName ? `${pet.vetName} (${pet.vetPhone || 'S/T'})` : 'No indicada'}</p>
+                            </div>
+                            <div className="col-span-2">
+                              <p className="font-bold text-on-surface-variant/60 uppercase tracking-wider">Dieta / Comidas</p>
+                              <p className="text-on-surface-variant mt-0.5">{pet.diet || 'No indicada'}</p>
+                            </div>
+                            <div className="col-span-2">
+                              <p className="font-bold text-on-surface-variant/60 uppercase tracking-wider">Notas Clínicas o Médicas</p>
+                              <p className="text-on-surface-variant mt-0.5">{pet.medicalNotes || 'Sin notas clínicas'}</p>
+                            </div>
+                            <div className="col-span-2">
+                              <p className="font-bold text-on-surface-variant/60 uppercase tracking-wider">Comportamiento / Notas Conducta</p>
+                              <p className="text-on-surface-variant mt-0.5">{pet.behaviorNotes || 'Sin notas de conducta'}</p>
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+
+                {/* Historial / Timeline de Interacciones */}
+                <div className="space-y-6">
+                  <h4 className="font-bold text-primary text-base flex items-center gap-2">
+                    <span className="material-symbols-outlined text-sm">history</span>
+                    Historial de Interacciones
+                  </h4>
+
+                  {/* Formulario añadir nota */}
+                  <form onSubmit={handleCreateInteraction} className="bg-surface-container-low p-5 rounded-3xl border border-outline-variant/10 space-y-4">
+                    <div className="flex gap-3">
+                      <select
+                        value={newInteractionType}
+                        onChange={(e) => setNewInteractionType(e.target.value)}
+                        className="bg-white border border-outline-variant/30 rounded-xl p-2.5 text-xs font-semibold focus:ring-primary focus:border-primary text-on-surface-variant"
+                      >
+                        <option value="NOTA">NOTA</option>
+                        <option value="LLAMADA">LLAMADA</option>
+                        <option value="WHATSAPP">WHATSAPP</option>
+                        <option value="EMAIL">EMAIL</option>
+                      </select>
+                      <input
+                        type="text"
+                        placeholder="Añadir nota o registro al historial..."
+                        value={newInteractionContent}
+                        onChange={(e) => setNewInteractionContent(e.target.value)}
+                        className="flex-1 bg-white border border-outline-variant/30 rounded-xl p-2.5 text-xs font-semibold focus:ring-primary focus:border-primary"
+                        required
+                      />
+                      <button
+                        type="submit"
+                        className="bg-primary text-white text-xs font-bold px-4 py-2.5 rounded-xl hover:scale-[0.98] transition-transform flex items-center justify-center animate-fade-in"
+                      >
+                        <span className="material-symbols-outlined text-sm">add</span>
+                      </button>
+                    </div>
+                  </form>
+
+                  {/* Lista de interacciones */}
+                  <div className="space-y-4 max-h-[40vh] overflow-y-auto pr-2">
+                    {interactions.map(interaction => {
+                      const icons = {
+                        NOTA: 'description',
+                        LLAMADA: 'call',
+                        WHATSAPP: 'chat',
+                        EMAIL: 'mail'
+                      };
+                      return (
+                        <div key={interaction.id} className="flex gap-3 p-4 bg-background border border-outline-variant/10 rounded-2xl">
+                          <div className="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center shrink-0">
+                            <span className="material-symbols-outlined text-primary text-sm">{icons[interaction.type] || 'info'}</span>
+                          </div>
+                          <div className="flex-1">
+                            <div className="flex justify-between items-center">
+                              <span className="text-[10px] font-bold text-primary uppercase tracking-wider">{interaction.type}</span>
+                              <span className="text-[10px] text-on-surface-variant/60">{new Date(interaction.createdAt).toLocaleString()}</span>
+                            </div>
+                            <p className="text-xs text-on-surface-variant mt-1 leading-relaxed">
+                              {interaction.content}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                    {interactions.length === 0 && (
+                      <p className="text-xs text-on-surface-variant/60 italic text-center py-6">Sin interacciones registradas.</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
       </main>
+    </div>
+  );
+}
+
+function RateRow({ rate, onSave }) {
+  const [val, setVal] = useState(rate.ratePerUnit);
+  const [unit, setUnit] = useState(rate.unitType);
+
+  return (
+    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 bg-surface-container-low rounded-3xl border border-outline-variant/10">
+      <div>
+        <h4 className="font-bold text-primary text-base">{rate.serviceName}</h4>
+        <p className="text-xs text-on-surface-variant mt-1">Tarifa base actual</p>
+      </div>
+      <div className="flex items-center gap-3 self-end sm:self-auto">
+        <div className="relative w-28">
+          <input
+            type="number"
+            step="0.01"
+            value={val}
+            onChange={(e) => setVal(e.target.value)}
+            className="w-full bg-white border border-outline-variant/30 rounded-xl p-3 pr-8 font-semibold text-sm focus:ring-primary focus:border-primary text-right"
+          />
+          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-on-surface-variant/75">€</span>
+        </div>
+        <span className="text-sm text-on-surface-variant">/</span>
+        <select
+          value={unit}
+          onChange={(e) => setUnit(e.target.value)}
+          className="bg-white border border-outline-variant/30 rounded-xl p-3 font-semibold text-sm focus:ring-primary focus:border-primary text-on-surface-variant"
+        >
+          <option value="noche">noche</option>
+          <option value="día">día</option>
+          <option value="visita">visita</option>
+          <option value="paseo">paseo</option>
+        </select>
+        <button
+          onClick={() => onSave(rate.serviceName, val, unit)}
+          className="bg-primary text-white font-bold text-xs px-5 py-3 rounded-xl hover:scale-[0.98] transition-transform flex items-center gap-1.5"
+        >
+          <span className="material-symbols-outlined text-sm">save</span>
+          Guardar
+        </button>
+      </div>
     </div>
   );
 }

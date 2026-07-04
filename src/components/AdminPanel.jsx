@@ -1,6 +1,10 @@
 import { useState, useEffect, useMemo } from 'react';
 import { driver } from 'driver.js';
 import 'driver.js/dist/driver.css';
+import FinancialDashboard from './FinancialDashboard';
+import InvoicingPanel from './InvoicingPanel';
+import ClientsFidelityPanel from './ClientsFidelityPanel';
+import DailyCarePanel from './DailyCarePanel';
 
 const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? '' : 'https://alilyback.duckdns.org/eris';
 
@@ -19,7 +23,7 @@ export default function AdminPanel() {
   const [loading, setLoading] = useState(false);
 
   // Navegación principal del Dashboard
-  const [activeTab, setActiveTab] = useState('bookings'); // bookings, crm, planner, tasks, availability
+  const [activeTab, setActiveTab] = useState('bookings'); // bookings, crm, planner, tasks, availability, finances, rates
 
   // Datos del Dashboard
   const [bookings, setBookings] = useState([]);
@@ -61,6 +65,32 @@ export default function AdminPanel() {
 
   // Tarifas y cálculos
   const [rates, setRates] = useState([]);
+
+  // Lista de espera
+  const [waitlistEntries, setWaitlistEntries] = useState([]);
+
+  // Capacidad
+  const [capacityConfigs, setCapacityConfigs] = useState([]);
+  const [capacityOccupation, setCapacityOccupation] = useState([]);
+
+  // Modal de capacidad/bloqueo
+  const [showCapacityModal, setShowCapacityModal] = useState(false);
+  const [modalDateStr, setModalDateStr] = useState('');
+  const [modalDayNum, setModalDayNum] = useState(1);
+  const [modalMaxPets, setModalMaxPets] = useState(4);
+  const [modalBlockType, setModalBlockType] = useState('');
+  const [modalReason, setModalReason] = useState('');
+  const [modalAvailability, setModalAvailability] = useState('bg-green-500');
+
+  // Calendario dinámico
+  const calNow = new Date();
+  const [calYear, setCalYear] = useState(calNow.getFullYear());
+  const [calMonth, setCalMonth] = useState(calNow.getMonth());
+  const monthStr = `${calYear}-${String(calMonth + 1).padStart(2, '0')}`;
+  const MONTH_NAMES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+
+  // Próximas estancias
+  const [upcomingStays, setUpcomingStays] = useState([]);
 
   // Ficha de cliente seleccionada en CRM y sus interacciones
   const [selectedClient, setSelectedClient] = useState(null);
@@ -177,6 +207,22 @@ export default function AdminPanel() {
         const resR = await fetch(`${API_BASE}/api/admin/rates`, { headers });
         if (resR.ok) setRates(await resR.json());
       }
+      if (activeTab === 'waitlist') {
+        const resWL = await fetch(`${API_BASE}/api/admin/waitlist`, { headers });
+        if (resWL.ok) setWaitlistEntries(await resWL.json());
+      }
+      if (activeTab === 'availability') {
+        const [resC, resUp] = await Promise.all([
+          fetch(`${API_BASE}/api/admin/capacity?month=${monthStr}`, { headers }),
+          fetch(`${API_BASE}/api/admin/upcoming-stays?days=14`, { headers })
+        ]);
+        if (resC.ok) {
+          const data = await resC.json();
+          setCapacityConfigs(data.configs || []);
+          setCapacityOccupation(data.occupation || []);
+        }
+        if (resUp.ok) setUpcomingStays(await resUp.json());
+      }
     } catch (err) {
       console.error('Error fetching data:', err);
     }
@@ -231,6 +277,112 @@ export default function AdminPanel() {
     } catch (err) {
       console.error(err);
       alert('Error de conexión');
+    }
+  };
+
+  // --- ACCIONES DE CAPACIDAD (MODAL) ---
+  const openDayModal = (dayNum) => {
+    const dateStr = `${calYear}-${String(calMonth + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
+    const existingConfig = capacityConfigs.find(c => c.date === dateStr);
+    const existingAvail = availability[dateStr];
+
+    setModalDateStr(dateStr);
+    setModalDayNum(dayNum);
+    setModalMaxPets(existingConfig?.maxPets ?? 4);
+    setModalBlockType(existingConfig?.blockType || '');
+    setModalReason(existingConfig?.reason || '');
+    setModalAvailability(existingAvail || 'bg-green-500');
+    setShowCapacityModal(true);
+  };
+
+  const handleSaveDayConfig = async () => {
+    if (!modalDateStr) return;
+    try {
+      const [capRes] = await Promise.all([
+        fetch(`${API_BASE}/api/admin/capacity`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({
+            date: modalDateStr,
+            maxPets: modalBlockType ? 0 : parseInt(modalMaxPets, 10),
+            blockType: modalBlockType || null,
+            reason: modalReason || null
+          })
+        }),
+        fetch(`${API_BASE}/api/admin/availability`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ date: modalDateStr, status: modalAvailability })
+        })
+      ]);
+
+      if (capRes.ok) {
+        const config = await capRes.json();
+        setAvailability(prev => ({ ...prev, [modalDateStr]: modalAvailability }));
+        setCapacityConfigs(prev => {
+          const filtered = prev.filter(c => c.date !== config.date);
+          return [...filtered, config];
+        });
+        setShowCapacityModal(false);
+        const [occRes2, upRes2] = await Promise.all([
+          fetch(`${API_BASE}/api/admin/capacity?month=${monthStr}`, { headers: { 'Authorization': `Bearer ${token}` } }),
+          fetch(`${API_BASE}/api/admin/upcoming-stays?days=14`, { headers: { 'Authorization': `Bearer ${token}` } })
+        ]);
+        if (occRes2.ok) { const d = await occRes2.json(); setCapacityOccupation(d.occupation || []); }
+        if (upRes2.ok) setUpcomingStays(await upRes2.json());
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleDeleteCapacity = async (id) => {
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/capacity/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        setCapacityConfigs(prev => prev.filter(c => c.id !== id));
+        const [occRes2, upRes2] = await Promise.all([
+          fetch(`${API_BASE}/api/admin/capacity?month=${monthStr}`, { headers: { 'Authorization': `Bearer ${token}` } }),
+          fetch(`${API_BASE}/api/admin/upcoming-stays?days=14`, { headers: { 'Authorization': `Bearer ${token}` } })
+        ]);
+        if (occRes2.ok) { const d = await occRes2.json(); setCapacityOccupation(d.occupation || []); }
+        if (upRes2.ok) setUpcomingStays(await upRes2.json());
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  // --- ACCIONES DE LISTA DE ESPERA ---
+  const handleWaitlistStatus = async (id, status) => {
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/waitlist/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ status })
+      });
+      if (res.ok) {
+        setWaitlistEntries(prev => prev.map(e => e.id === id ? { ...e, status } : e));
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleDeleteWaitlist = async (id) => {
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/waitlist/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        setWaitlistEntries(prev => prev.filter(e => e.id !== id));
+      }
+    } catch (err) {
+      console.error(err);
     }
   };
 
@@ -411,27 +563,34 @@ export default function AdminPanel() {
     }
   };
 
-  const handleDownloadInvoice = async (bookingId) => {
+  const handleGenerateInvoice = async (bookingId) => {
     try {
       const res = await fetch(`${API_BASE}/api/admin/bookings/${bookingId}/invoice`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
       });
-      if (!res.ok) throw new Error('Error al generar la factura');
-      
-      const blob = await res.blob();
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || 'Error al generar factura');
+      }
+      const invoice = await res.json();
+      // Descargar PDF via fetch+blob
+      const pdfRes = await fetch(`${API_BASE}/api/admin/invoices/${invoice.id}/pdf`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!pdfRes.ok) throw new Error('Error al descargar PDF');
+      const blob = await pdfRes.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `Factura-Reserva-${bookingId}.pdf`;
+      a.download = `Factura-${invoice.invoiceNum}.pdf`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
       a.remove();
     } catch (error) {
-      console.error('Error downloading invoice:', error);
-      alert('No se pudo generar la factura. Asegúrate de que la reserva está en estado Aceptado.');
+      console.error('Error generando factura:', error);
+      alert(error.message);
     }
   };
 
@@ -576,64 +735,26 @@ export default function AdminPanel() {
 
   // --- DISPONIBILIDAD: ACCIONES ---
 
-  const toggleDayStatus = async (dayNum) => {
-    const dateStr = `2026-07-${String(dayNum).padStart(2, '0')}`;
-    let currentStatus = availability[dateStr];
-    if (!currentStatus) {
-      if (dayNum === 1) currentStatus = 'bg-green-500';
-      else if (dayNum === 2) currentStatus = 'bg-orange-300';
-      else if (dayNum === 3) currentStatus = 'bg-red-400';
-      else if (dayNum === 4) currentStatus = 'bg-green-500';
-      else if (dayNum === 5) currentStatus = 'bg-orange-300';
-      else {
-        const seed = (dayNum * 31 + 17) % statuses.length;
-        currentStatus = statuses[seed];
-      }
-    }
-
-    let nextStatus = '';
-    if (currentStatus === 'bg-green-500') nextStatus = 'bg-orange-300';
-    else if (currentStatus === 'bg-orange-300') nextStatus = 'bg-red-400';
-    else nextStatus = 'bg-green-500';
-
-    try {
-      const res = await fetch(`${API_BASE}/api/admin/availability`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ date: dateStr, status: nextStatus })
-      });
-      if (res.ok) {
-        setAvailability(prev => ({ ...prev, [dateStr]: nextStatus }));
-      }
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
   // Pre-generar días de Julio 2026
   const calendarDays = useMemo(() => {
-    const list = [];
-    for (let i = 1; i <= 31; i++) {
-      const dateStr = `2026-07-${String(i).padStart(2, '0')}`;
-      let status = availability[dateStr];
-      if (!status) {
-        if (i === 1) status = 'bg-green-500';
-        else if (i === 2) status = 'bg-orange-300';
-        else if (i === 3) status = 'bg-red-400';
-        else if (i === 4) status = 'bg-green-500';
-        else if (i === 5) status = 'bg-orange-300';
-        else {
-          const seed = (i * 31 + 17) % statuses.length;
-          status = statuses[seed];
-        }
-      }
-      list.push({ day: i, status });
+    const firstDay = new Date(calYear, calMonth, 1);
+    const lastDay = new Date(calYear, calMonth + 1, 0);
+    const numDays = lastDay.getDate();
+    const startDayOfWeek = firstDay.getDay();
+    const startCol = startDayOfWeek === 0 ? 6 : startDayOfWeek - 1;
+    const todayStr = new Date().toISOString().split('T')[0];
+    const result = [];
+    for (let i = 0; i < startCol; i++) {
+      result.push(null);
     }
-    return list;
-  }, [availability]);
+    for (let d = 1; d <= numDays; d++) {
+      const dateStr = `${calYear}-${String(calMonth + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      const status = availability[dateStr] || 'bg-green-500';
+      const isPast = dateStr < todayStr;
+      result.push({ day: d, dateStr, status, isPast });
+    }
+    return result;
+  }, [availability, calYear, calMonth]);
 
   // Si no hay token de autenticación, mostrar login
   if (!token) {
@@ -818,6 +939,18 @@ export default function AdminPanel() {
             </button>
 
             <button
+              onClick={() => setActiveTab('dailycare')}
+              className={`w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl font-bold text-sm transition-all ${
+                activeTab === 'dailycare'
+                  ? 'bg-primary text-white shadow-md'
+                  : 'text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface'
+              }`}
+            >
+              <span className="material-symbols-outlined">pets</span>
+              Cuidado Diario
+            </button>
+
+            <button
               onClick={() => setActiveTab('availability')}
               className={`w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl font-bold text-sm transition-all ${
                 activeTab === 'availability'
@@ -830,6 +963,59 @@ export default function AdminPanel() {
             </button>
 
             <button
+              onClick={() => setActiveTab('waitlist')}
+              className={`w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl font-bold text-sm transition-all ${
+                activeTab === 'waitlist'
+                  ? 'bg-primary text-white shadow-md'
+                  : 'text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface'
+              }`}
+            >
+              <span className="material-symbols-outlined">playlist_add</span>
+              Lista de Espera
+              {waitlistEntries.filter(e => e.status === 'PENDING').length > 0 && (
+                <span className="ml-auto bg-rose-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-sm">
+                  {waitlistEntries.filter(e => e.status === 'PENDING').length}
+                </span>
+              )}
+            </button>
+
+            <button
+              onClick={() => setActiveTab('finances')}
+              className={`w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl font-bold text-sm transition-all ${
+                activeTab === 'finances'
+                  ? 'bg-primary text-white shadow-md'
+                  : 'text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface'
+              }`}
+            >
+              <span className="material-symbols-outlined">account_balance</span>
+              Finanzas
+            </button>
+
+            <button
+              onClick={() => setActiveTab('invoices')}
+              className={`w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl font-bold text-sm transition-all ${
+                activeTab === 'invoices'
+                  ? 'bg-primary text-white shadow-md'
+                  : 'text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface'
+              }`}
+            >
+              <span className="material-symbols-outlined">receipt</span>
+              Facturación
+            </button>
+
+            <button
+              onClick={() => setActiveTab('fidelity')}
+              className={`w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl font-bold text-sm transition-all ${
+                activeTab === 'fidelity'
+                  ? 'bg-primary text-white shadow-md'
+                  : 'text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface'
+              }`}
+            >
+              <span className="material-symbols-outlined">card_membership</span>
+              Fidelización
+            </button>
+
+            <button
               onClick={() => setActiveTab('rates')}
               className={`w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl font-bold text-sm transition-all ${
                 activeTab === 'rates'
@@ -839,6 +1025,18 @@ export default function AdminPanel() {
             >
               <span className="material-symbols-outlined">payments</span>
               Configurar Tarifas
+            </button>
+
+            <button
+              onClick={() => setActiveTab('email')}
+              className={`w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl font-bold text-sm transition-all ${
+                activeTab === 'email'
+                  ? 'bg-primary text-white shadow-md'
+                  : 'text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface'
+              }`}
+            >
+              <span className="material-symbols-outlined">mail</span>
+              Email
             </button>
           </nav>
         </div>
@@ -1124,6 +1322,15 @@ export default function AdminPanel() {
                               <span className="material-symbols-outlined text-sm">settings_backup_restore</span>
                               Reabrir
                             </button>
+                            {booking.price && booking.status !== 'PENDIENTE' && (
+                              <button
+                                onClick={() => handleGenerateInvoice(booking.id)}
+                                className="w-full bg-primary/10 text-primary border border-primary/20 text-xs font-bold px-4 py-2.5 rounded-xl hover:bg-primary/20 transition-colors flex items-center justify-center gap-1.5"
+                              >
+                                <span className="material-symbols-outlined text-sm">receipt_long</span>
+                                Factura
+                              </button>
+                            )}
                           </>
                         )}
                       </div>
@@ -1183,7 +1390,7 @@ export default function AdminPanel() {
                                   </a>
                                 )}
                                 <button
-                                  onClick={(e) => { e.stopPropagation(); handleDownloadInvoice(booking.id); }}
+                                  onClick={(e) => { e.stopPropagation(); handleGenerateInvoice(booking.id); }}
                                   className="flex-1 bg-surface-container-low text-primary border border-outline-variant/30 text-[10px] font-bold px-2 py-1.5 rounded-lg hover:bg-surface-container transition-colors flex items-center justify-center gap-1"
                                 >
                                   <span className="material-symbols-outlined text-[12px]">receipt_long</span>
@@ -1766,74 +1973,415 @@ export default function AdminPanel() {
           </div>
         )}
 
-        {/* TAB 5: DISPONIBILIDAD WEB */}
+        {/* TAB 5: CUIDADO DIARIO */}
+        {activeTab === 'dailycare' && (
+          <div className="max-w-6xl mx-auto">
+            <DailyCarePanel token={token} pets={pets} />
+          </div>
+        )}
+
+        {/* TAB 6: DISPONIBILIDAD WEB */}
         {activeTab === 'availability' && (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
-            <div className="lg:col-span-5 bg-white border border-outline-variant/20 p-8 rounded-[2.5rem] shadow-sm font-body-md text-on-surface">
-              <span className="text-xs font-bold uppercase tracking-widest text-terracota mb-3 block">ADMINISTRAR FECHAS</span>
-              <h2 className="text-2xl font-bold text-primary mb-6 font-display-lg">Gestión de Calendario</h2>
-              <p className="text-sm text-on-surface-variant mb-6 leading-relaxed">
-                Haz clic directamente en cualquier día del calendario para cambiar cíclicamente su disponibilidad. El cambio se guardará de forma inmediata en la base de datos y se reflejará en la web pública.
-              </p>
-              
-              <div className="space-y-4 border-t border-outline-variant/10 pt-6">
-                <div className="flex items-center gap-3">
-                  <span className="w-4 h-4 rounded-full bg-green-500"></span>
-                  <div>
-                    <p className="text-sm font-bold">Disponible</p>
-                    <p className="text-xs text-on-surface-variant/75">Permite a los clientes pedir estas fechas.</p>
+          <div className="space-y-8">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
+              <div className="lg:col-span-5 bg-white border border-outline-variant/20 p-8 rounded-[2.5rem] shadow-sm font-body-md text-on-surface">
+                <span className="text-xs font-bold uppercase tracking-widest text-terracota mb-3 block">ADMINISTRAR FECHAS</span>
+                <h2 className="text-2xl font-bold text-primary mb-6 font-display-lg">Gestión de Calendario</h2>
+                <p className="text-sm text-on-surface-variant mb-6 leading-relaxed">
+                  Haz clic directamente en cualquier día del calendario para cambiar cíclicamente su disponibilidad. El cambio se guardará de forma inmediata en la base de datos y se reflejará en la web pública.
+                </p>
+                
+                <div className="space-y-4 border-t border-outline-variant/10 pt-6">
+                  <div className="flex items-center gap-3">
+                    <span className="w-4 h-4 rounded-full bg-green-500"></span>
+                    <div>
+                      <p className="text-sm font-bold">Disponible</p>
+                      <p className="text-xs text-on-surface-variant/75">Permite a los clientes pedir estas fechas.</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="w-4 h-4 rounded-full bg-red-400"></span>
+                    <div>
+                      <p className="text-sm font-bold">Reservado</p>
+                      <p className="text-xs text-on-surface-variant/75">Fechas llenas, no se aceptan nuevas mascotas.</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="w-4 h-4 rounded-full bg-orange-300"></span>
+                    <div>
+                      <p className="text-sm font-bold">Consultar</p>
+                      <p className="text-xs text-on-surface-variant/75">Fechas semi-reservadas o pendientes de confirmar.</p>
+                    </div>
                   </div>
                 </div>
-                <div className="flex items-center gap-3">
-                  <span className="w-4 h-4 rounded-full bg-red-400"></span>
-                  <div>
-                    <p className="text-sm font-bold">Reservado</p>
-                    <p className="text-xs text-on-surface-variant/75">Fechas llenas, no se aceptan nuevas mascotas.</p>
+
+                {/* Acceso a configuración detallada */}
+                <div className="mt-8 pt-6 border-t border-outline-variant/10">
+                  <div className="p-4 bg-surface-container rounded-2xl border border-outline-variant/10">
+                    <p className="text-xs text-on-surface-variant leading-relaxed">
+                      <span className="font-bold text-primary">Consejo:</span> Haz clic en cualquier día del calendario para abrir el panel de configuración. Podrás ajustar la disponibilidad, la capacidad máxima, o bloquear el día con un motivo visible al público.
+                    </p>
                   </div>
                 </div>
-                <div className="flex items-center gap-3">
-                  <span className="w-4 h-4 rounded-full bg-orange-300"></span>
-                  <div>
-                    <p className="text-sm font-bold">Consultar</p>
-                    <p className="text-xs text-on-surface-variant/75">Fechas semi-reservadas o pendientes de confirmar.</p>
+              </div>
+
+              <div className="lg:col-span-7 bg-surface-container-low rounded-[2.5rem] p-8 shadow-sm">
+                <div className="flex items-center justify-between mb-8">
+                  <h3 className="text-xl font-bold text-primary">{MONTH_NAMES[calMonth]} {calYear}</h3>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => {
+                        if (calMonth === 0) { setCalMonth(11); setCalYear(y => y - 1); }
+                        else setCalMonth(m => m - 1);
+                      }}
+                      className="w-8 h-8 rounded-full border border-outline-variant flex items-center justify-center text-on-surface-variant hover:bg-white transition-colors"
+                    >
+                      <span className="material-symbols-outlined text-sm">chevron_left</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (calMonth === 11) { setCalMonth(0); setCalYear(y => y + 1); }
+                        else setCalMonth(m => m + 1);
+                      }}
+                      className="w-8 h-8 rounded-full border border-outline-variant flex items-center justify-center text-on-surface-variant hover:bg-white transition-colors"
+                    >
+                      <span className="material-symbols-outlined text-sm">chevron_right</span>
+                    </button>
                   </div>
+                </div>
+                
+                <div className="grid grid-cols-7 gap-2 text-center text-xs font-bold text-on-surface-variant/50 uppercase tracking-widest mb-4">
+                  <div>L</div><div>M</div><div>X</div><div>J</div><div>V</div><div>S</div><div>D</div>
+                </div>
+                
+                <div className="grid grid-cols-7 gap-3">
+                  {calendarDays.map((item, index) => {
+                    if (!item) return <div key={`empty-${index}`} />;
+                    const occ = capacityOccupation.find(o => o.date === item.dateStr);
+                    return (
+                      <button
+                        key={item.dateStr}
+                        onClick={() => openDayModal(item.day)}
+                        disabled={item.isPast}
+                        className={`${item.isPast ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer hover:ring-2 hover:ring-primary'} aspect-square rounded-2xl bg-white border border-outline-variant/10 flex flex-col items-center justify-center relative group transition-all`}
+                        title={`Clic para configurar día ${item.day}${occ ? ` (${occ.occupied}/${occ.capacity} ocupadas)` : ''}`}
+                      >
+                        <span className="relative z-10 font-semibold text-sm">{item.day}</span>
+                        <div className={`absolute bottom-1 w-1.5 h-1.5 rounded-full ${item.status}`}></div>
+                        {occ && (
+                          <span className="absolute -top-1 right-0 text-[7px] text-on-surface-variant/50 font-bold">
+                            {occ.occupied}/{occ.capacity}
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             </div>
 
-            <div className="lg:col-span-7 bg-surface-container-low rounded-[2.5rem] p-8 shadow-sm">
-              <div className="flex items-center justify-between mb-8">
-                <h3 className="text-xl font-bold text-primary">Julio 2026</h3>
-                <span className="text-xs font-semibold px-4 py-1.5 bg-white border border-outline-variant/30 rounded-full text-on-surface-variant flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-primary"></span>
-                  Mes activo
-                </span>
-              </div>
-              
-              <div className="grid grid-cols-7 gap-2 text-center text-xs font-bold text-on-surface-variant/50 uppercase tracking-widest mb-4">
-                <div>L</div><div>M</div><div>X</div><div>J</div><div>V</div><div>S</div><div>D</div>
-              </div>
-              
-              <div className="grid grid-cols-7 gap-3">
-                {calendarDays.map((item, index) => {
-                  const colStartClass = item.day === 1 ? 'col-start-3' : '';
-                  return (
+            {/* Configuraciones activas */}
+            {capacityConfigs.length > 0 && (
+              <div className="bg-white border border-outline-variant/20 p-8 rounded-[2.5rem] shadow-sm">
+                <h3 className="text-sm font-bold text-primary mb-4 flex items-center gap-2">
+                  <span className="material-symbols-outlined text-sm">list_alt</span>
+                  Capacidad configurada ({capacityConfigs.length} día(s))
+                </h3>
+                <div className="flex flex-wrap gap-2">
+                  {capacityConfigs.map(config => {
+                    const dayNum = parseInt(config.date.split('-')[2], 10);
+                    return (
                     <button
-                      key={index}
-                      onClick={() => toggleDayStatus(item.day)}
-                      className={`${colStartClass} aspect-square rounded-2xl bg-white border border-outline-variant/10 flex flex-col items-center justify-center relative group hover:ring-2 hover:ring-primary transition-all cursor-pointer`}
-                      title={`Clic para cambiar estado de día ${item.day}`}
-                    >
-                      <span className="relative z-10 font-semibold text-sm">{item.day}</span>
-                      <div className={`absolute bottom-2 w-1.5 h-1.5 rounded-full ${item.status}`}></div>
+                      key={config.id}
+                      onClick={() => openDayModal(dayNum)}
+                      className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold border cursor-pointer hover:ring-2 hover:ring-primary transition-all ${
+                      config.blockType ? 'bg-gray-100 border-gray-200 text-gray-700' : 'bg-primary/5 border-primary/10 text-primary'
+                    }`}>
+                      <span>{config.date}</span>
+                      {config.blockType ? (
+                        <span className="text-gray-500">🔒 {config.reason || config.blockType}</span>
+                      ) : (
+                        <span>{config.maxPets} plazas</span>
+                      )}
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleDeleteCapacity(config.id); }}
+                        className="ml-1 w-4 h-4 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center text-[8px] hover:bg-rose-200 transition-colors"
+                        title="Eliminar"
+                      >
+                        ✕
+                      </button>
                     </button>
-                  );
-                })}
+                  );})}
+                </div>
               </div>
+            )}
+
+            {/* Próximas estancias */}
+            {upcomingStays.length > 0 && (
+              <div className="bg-white border border-outline-variant/20 p-8 rounded-[2.5rem] shadow-sm">
+                <h3 className="text-sm font-bold text-primary mb-4 flex items-center gap-2">
+                  <span className="material-symbols-outlined text-sm">calendar_month</span>
+                  Próximas estancias ({upcomingStays.length})
+                </h3>
+                <div className="divide-y divide-outline-variant/10">
+                  {upcomingStays.slice(0, 14).map(stay => (
+                    <div key={stay.id} className="py-3 flex items-center justify-between text-sm">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-2 h-2 rounded-full ${stay.status === 'PROGRESO' ? 'bg-green-500' : 'bg-primary'}`}></div>
+                        <div>
+                          <span className="font-semibold text-primary">{stay.pet?.name || 'Mascota'}</span>
+                          <span className="text-on-surface-variant/70 ml-2">— {stay.client?.name || 'Cliente'}</span>
+                        </div>
+                      </div>
+                      <div className="text-xs text-on-surface-variant">
+                        {stay.startDate} → {stay.endDate}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Modal de configuración de día */}
+            {showCapacityModal && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fade-in" onClick={() => setShowCapacityModal(false)}>
+                <div className="bg-white rounded-[2.5rem] border border-outline-variant/15 w-full max-w-md max-h-[90vh] overflow-y-auto shadow-2xl" onClick={(e) => e.stopPropagation()}>
+                  <div className="p-8">
+                    <div className="flex items-center justify-between mb-6">
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-terracota">CONFIGURAR DÍA</span>
+                      <button onClick={() => setShowCapacityModal(false)} className="w-8 h-8 rounded-full flex items-center justify-center border border-outline-variant/20 text-on-surface-variant hover:bg-surface-container transition-colors">
+                        <span className="material-symbols-outlined text-sm">close</span>
+                      </button>
+                    </div>
+                    <h2 className="text-2xl font-bold text-primary mb-2 font-display-lg">
+                      {modalDayNum} de {MONTH_NAMES[calMonth]} {calYear}
+                    </h2>
+                    <p className="text-xs text-on-surface-variant mb-6">
+                      Configura la disponibilidad, capacidad máxima y bloqueos para esta fecha.
+                    </p>
+
+                    {/* Selector de disponibilidad */}
+                    <div className="mb-6">
+                      <label className="text-[9px] font-bold text-on-surface-variant uppercase tracking-widest mb-3 block">Disponibilidad</label>
+                      <div className="flex gap-2">
+                        {[
+                          { value: 'bg-green-500', label: 'Disponible', sub: 'Aceptar reservas', color: 'bg-green-500' },
+                          { value: 'bg-orange-300', label: 'Consultar', sub: 'Semi-reservado', color: 'bg-orange-300' },
+                          { value: 'bg-red-400', label: 'Reservado', sub: 'No aceptar', color: 'bg-red-400' }
+                        ].map(opt => (
+                          <button
+                            key={opt.value}
+                            onClick={() => setModalAvailability(opt.value)}
+                            className={`flex-1 p-4 rounded-2xl border-2 text-center transition-all ${
+                              modalAvailability === opt.value
+                                ? 'border-primary bg-primary/5'
+                                : 'border-outline-variant/20 bg-white hover:border-outline-variant/40'
+                            }`}
+                          >
+                            <div className={`w-3 h-3 rounded-full ${opt.color} mx-auto mb-2`}></div>
+                            <p className="text-xs font-bold text-on-surface">{opt.label}</p>
+                            <p className="text-[8px] text-on-surface-variant/70 mt-0.5">{opt.sub}</p>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Tipo de bloqueo */}
+                    <div className="mb-5">
+                      <label className="text-[9px] font-bold text-on-surface-variant uppercase tracking-widest mb-2 block">Tipo de configuración</label>
+                      <select
+                        value={modalBlockType}
+                        onChange={(e) => {
+                          setModalBlockType(e.target.value);
+                          if (e.target.value) setModalAvailability('bg-red-400');
+                        }}
+                        className="w-full bg-surface-container-low border border-outline-variant/30 rounded-xl p-3 text-xs"
+                      >
+                        <option value="">Capacidad normal (abierto)</option>
+                        <option value="VACATION">Vacaciones</option>
+                        <option value="WORK">Trabajo artístico</option>
+                        <option value="PERSONAL">Asuntos personales</option>
+                        <option value="FULL">Día completo</option>
+                        <option value="OTHER">Otro motivo</option>
+                      </select>
+                    </div>
+
+                    {/* Capacidad máxima */}
+                    {!modalBlockType && (
+                      <div className="mb-5">
+                        <label className="text-[9px] font-bold text-on-surface-variant uppercase tracking-widest mb-2 block">Plazas máximas</label>
+                        <input
+                          type="number"
+                          min="1"
+                          max="20"
+                          value={modalMaxPets}
+                          onChange={(e) => setModalMaxPets(e.target.value)}
+                          className="w-full bg-surface-container-low border border-outline-variant/30 rounded-xl p-3 text-xs"
+                        />
+                      </div>
+                    )}
+
+                    {/* Razón de bloqueo */}
+                    {modalBlockType && (
+                      <div className="mb-5">
+                        <label className="text-[9px] font-bold text-on-surface-variant uppercase tracking-widest mb-2 block">Motivo (visible al público)</label>
+                        <input
+                          value={modalReason}
+                          onChange={(e) => setModalReason(e.target.value)}
+                          placeholder="Ej. Vacaciones de Eris"
+                          className="w-full bg-surface-container-low border border-outline-variant/30 rounded-xl p-3 text-xs"
+                        />
+                      </div>
+                    )}
+
+                    {/* Acciones */}
+                    <div className="flex gap-3 mt-8">
+                      <button
+                        onClick={() => {
+                          const existingConfig = capacityConfigs.find(c => c.date === modalDateStr);
+                          if (existingConfig) handleDeleteCapacity(existingConfig.id);
+                          setShowCapacityModal(false);
+                        }}
+                        className="flex-1 py-3 rounded-xl border border-rose-200 text-rose-600 font-bold text-xs hover:bg-rose-50 transition-all"
+                      >
+                        {capacityConfigs.find(c => c.date === modalDateStr) ? 'Eliminar config.' : 'Cancelar'}
+                      </button>
+                      <button
+                        onClick={handleSaveDayConfig}
+                        className="flex-1 py-3 rounded-xl bg-primary text-white font-bold text-xs hover:scale-[0.98] transition-transform"
+                      >
+                        Guardar
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+        {/* TAB 7: LISTA DE ESPERA */}
+        {activeTab === 'waitlist' && (
+          <div className="max-w-5xl mx-auto">
+            <div className="bg-white border border-outline-variant/20 p-8 md:p-12 rounded-[2.5rem] shadow-sm">
+              <span className="text-xs font-bold uppercase tracking-widest text-terracota mb-3 block">LISTA DE ESPERA</span>
+              <h2 className="text-3xl font-bold text-primary mb-2 font-display-lg">Clientes en Espera</h2>
+              <p className="text-sm text-on-surface-variant mb-8 leading-relaxed">
+                Clientes que han solicitado plaza en días completos. Gestiona las ofertas manualmente.
+              </p>
+
+              {waitlistEntries.length === 0 ? (
+                <div className="text-center py-16">
+                  <span className="material-symbols-outlined text-5xl text-outline-variant/30 mb-4 block">playlist_add_check</span>
+                  <p className="text-sm text-on-surface-variant italic">No hay entradas en la lista de espera.</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="border-b border-outline-variant/20">
+                        <th className="text-left py-3 pr-4 font-bold text-on-surface-variant/60 uppercase tracking-wider">Fecha</th>
+                        <th className="text-left py-3 pr-4 font-bold text-on-surface-variant/60 uppercase tracking-wider">Cliente</th>
+                        <th className="text-left py-3 pr-4 font-bold text-on-surface-variant/60 uppercase tracking-wider">Mascota</th>
+                        <th className="text-left py-3 pr-4 font-bold text-on-surface-variant/60 uppercase tracking-wider">Servicio</th>
+                        <th className="text-center py-3 pr-4 font-bold text-on-surface-variant/60 uppercase tracking-wider">Estado</th>
+                        <th className="text-center py-3 font-bold text-on-surface-variant/60 uppercase tracking-wider">Acciones</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-outline-variant/10">
+                      {waitlistEntries.map(entry => (
+                        <tr key={entry.id} className="hover:bg-surface-container-low/50 transition-colors">
+                          <td className="py-4 pr-4 font-semibold">{entry.date}</td>
+                          <td className="py-4 pr-4">
+                            <p className="font-semibold">{entry.clientName}</p>
+                            <p className="text-[10px] text-on-surface-variant/70">{entry.clientEmail}</p>
+                            {entry.clientPhone && <p className="text-[10px] text-on-surface-variant/70">{entry.clientPhone}</p>}
+                          </td>
+                          <td className="py-4 pr-4">
+                            <span className="font-semibold">{entry.petName || '-'}</span>
+                            <span className="text-[10px] text-on-surface-variant/70 block">{entry.petType}</span>
+                          </td>
+                          <td className="py-4 pr-4">{entry.service || '-'}</td>
+                          <td className="py-4 pr-4 text-center">
+                            <span className={`inline-block px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider ${
+                              entry.status === 'PENDING' ? 'bg-orange-100 text-orange-800' :
+                              entry.status === 'OFFERED' ? 'bg-blue-100 text-blue-800' :
+                              entry.status === 'CONVERTED' ? 'bg-emerald-100 text-emerald-800' :
+                              'bg-gray-100 text-gray-800'
+                            }`}>
+                              {entry.status === 'PENDING' ? 'Pendiente' :
+                               entry.status === 'OFFERED' ? 'Ofertado' :
+                               entry.status === 'CONVERTED' ? 'Convertido' : 'Expirado'}
+                            </span>
+                          </td>
+                          <td className="py-4 text-center">
+                            <div className="flex items-center justify-center gap-1">
+                              {entry.status === 'PENDING' && (
+                                <>
+                                  <button
+                                    onClick={() => handleWaitlistStatus(entry.id, 'OFFERED')}
+                                    className="px-2.5 py-1.5 bg-blue-600 text-white rounded-lg font-bold text-[10px] hover:bg-blue-700 transition-colors"
+                                    title="Marcar como ofertado"
+                                  >
+                                    Ofertar
+                                  </button>
+                                  <button
+                                    onClick={() => handleWaitlistStatus(entry.id, 'CONVERTED')}
+                                    className="px-2.5 py-1.5 bg-emerald-600 text-white rounded-lg font-bold text-[10px] hover:bg-emerald-700 transition-colors"
+                                    title="Marcar como convertido"
+                                  >
+                                    Convertir
+                                  </button>
+                                </>
+                              )}
+                              {entry.status === 'OFFERED' && (
+                                <button
+                                  onClick={() => handleWaitlistStatus(entry.id, 'CONVERTED')}
+                                  className="px-2.5 py-1.5 bg-emerald-600 text-white rounded-lg font-bold text-[10px] hover:bg-emerald-700 transition-colors"
+                                >
+                                  Convertir
+                                </button>
+                              )}
+                              <button
+                                onClick={() => handleDeleteWaitlist(entry.id)}
+                                className="px-2.5 py-1.5 bg-rose-100 text-rose-700 rounded-lg font-bold text-[10px] hover:bg-rose-200 transition-colors"
+                                title="Eliminar"
+                              >
+                                Eliminar
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           </div>
         )}
-        {/* TAB 6: CONFIGURAR TARIFAS */}
+
+        {/* TAB 8: FINANZAS */}
+        {activeTab === 'finances' && (
+          <div className="max-w-6xl mx-auto">
+            <FinancialDashboard token={token} />
+          </div>
+        )}
+
+        {/* TAB 9: FACTURACIÓN */}
+        {activeTab === 'invoices' && (
+          <div className="max-w-6xl mx-auto">
+            <InvoicingPanel token={token} />
+          </div>
+        )}
+
+        {/* TAB 10: FIDELIZACIÓN */}
+        {activeTab === 'fidelity' && (
+          <div className="max-w-6xl mx-auto">
+            <ClientsFidelityPanel token={token} />
+          </div>
+        )}
+
+        {/* TAB 11: CONFIGURAR TARIFAS */}
         {activeTab === 'rates' && (
           <div className="max-w-4xl mx-auto bg-white border border-outline-variant/20 p-8 md:p-12 rounded-[2.5rem] shadow-sm font-body-md text-on-surface">
             <span className="text-xs font-bold uppercase tracking-widest text-terracota mb-3 block">PRECIOS Y SERVICIOS</span>
@@ -1857,6 +2405,11 @@ export default function AdminPanel() {
               )}
             </div>
           </div>
+        )}
+
+        {/* TAB 12: EMAIL */}
+        {activeTab === 'email' && (
+          <EmailSettingsPanel token={token} />
         )}
 
         {/* MODAL FICHA 360 Y TIMELINE DE INTERACCIONES */}
@@ -2193,6 +2746,11 @@ export default function AdminPanel() {
             <span className="material-symbols-outlined text-3xl mb-1">event_note</span>
             <span className="text-[10px] font-bold uppercase tracking-wider">Tareas</span>
           </button>
+
+          <button onClick={() => setActiveTab('dailycare')} className={`flex flex-col items-center p-2 rounded-xl transition-all min-w-[72px] ${activeTab === 'dailycare' ? 'text-emerald-600 bg-emerald-50 scale-105' : 'text-on-surface-variant hover:bg-surface-container'}`}>
+            <span className="material-symbols-outlined text-3xl mb-1">pets</span>
+            <span className="text-[10px] font-bold uppercase tracking-wider">Cuidado</span>
+          </button>
           
           <button onClick={() => setActiveTab('crm')} className={`flex flex-col items-center p-2 rounded-xl transition-all min-w-[72px] ${activeTab === 'crm' ? 'text-emerald-600 bg-emerald-50 scale-105' : 'text-on-surface-variant hover:bg-surface-container'}`}>
             <span className="material-symbols-outlined text-3xl mb-1">contacts</span>
@@ -2218,6 +2776,126 @@ export default function AdminPanel() {
         </nav>
       )}
 
+    </div>
+  );
+}
+
+function EmailSettingsPanel({ token }) {
+  const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? '' : 'https://alilyback.duckdns.org/eris';
+  const headers = { 'Authorization': `Bearer ${token}` };
+  const [config, setConfig] = useState(null);
+  const [smtpHost, setSmtpHost] = useState('');
+  const [smtpPort, setSmtpPort] = useState('587');
+  const [smtpUser, setSmtpUser] = useState('');
+  const [smtpPass, setSmtpPass] = useState('');
+  const [emailFrom, setEmailFrom] = useState('');
+  const [emailFromName, setEmailFromName] = useState('Eris Pet Care');
+  const [testEmailTo, setTestEmailTo] = useState('');
+  const [testResult, setTestResult] = useState(null);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    fetch(`${API_BASE}/api/admin/email-config`, { headers })
+      .then(r => r.json())
+      .then(d => {
+        setConfig(d);
+        if (d.smtpHost) setSmtpHost(d.smtpHost);
+        if (d.smtpPort) setSmtpPort(String(d.smtpPort));
+        if (d.smtpUser) setSmtpUser(d.smtpUser);
+        if (d.emailFrom) setEmailFrom(d.emailFrom);
+        if (d.emailFromName) setEmailFromName(d.emailFromName);
+      })
+      .catch(() => {});
+  }, []);
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/email-config`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...headers },
+        body: JSON.stringify({ smtpHost, smtpPort, smtpUser, smtpPass, emailFrom, emailFromName })
+      });
+      if (res.ok) alert('Configuración guardada');
+    } catch (err) { alert('Error al guardar'); }
+    setSaving(false);
+  };
+
+  const handleTest = async () => {
+    setTestResult(null);
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/email-test`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...headers },
+        body: JSON.stringify({ to: testEmailTo || null })
+      });
+      const data = await res.json();
+      setTestResult(data);
+    } catch (err) { setTestResult({ ok: false, error: err.message }); }
+  };
+
+  const isConfigured = smtpHost && smtpUser;
+
+  return (
+    <div className="max-w-4xl mx-auto bg-white border border-outline-variant/20 p-8 md:p-12 rounded-[2.5rem] shadow-sm font-body-md text-on-surface">
+      <span className="text-xs font-bold uppercase tracking-widest text-terracota mb-3 block">CORREO ELECTRÓNICO</span>
+      <h2 className="text-3xl font-bold text-primary mb-6 font-display-lg">Configuración SMTP</h2>
+      <p className="text-sm text-on-surface-variant mb-10 leading-relaxed">
+        Configura un servidor SMTP (Gmail, Yahoo, u otro) para enviar emails automáticos: confirmaciones, notificaciones de check-in/out, facturas y alertas de lista de espera.
+      </p>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+        <div>
+          <label className="text-xs font-bold text-on-surface tracking-wider mb-1.5 block">Servidor SMTP</label>
+          <input value={smtpHost} onChange={e => setSmtpHost(e.target.value)} placeholder="smtp.gmail.com" className="w-full bg-surface-container-low border border-outline-variant/30 rounded-xl p-3 text-sm focus:ring-primary focus:border-primary" />
+        </div>
+        <div>
+          <label className="text-xs font-bold text-on-surface tracking-wider mb-1.5 block">Puerto</label>
+          <input value={smtpPort} onChange={e => setSmtpPort(e.target.value)} placeholder="587" className="w-full bg-surface-container-low border border-outline-variant/30 rounded-xl p-3 text-sm focus:ring-primary focus:border-primary" />
+        </div>
+        <div>
+          <label className="text-xs font-bold text-on-surface tracking-wider mb-1.5 block">Usuario</label>
+          <input value={smtpUser} onChange={e => setSmtpUser(e.target.value)} placeholder="tu@email.com" className="w-full bg-surface-container-low border border-outline-variant/30 rounded-xl p-3 text-sm focus:ring-primary focus:border-primary" />
+        </div>
+        <div>
+          <label className="text-xs font-bold text-on-surface tracking-wider mb-1.5 block">Contraseña</label>
+          <input type="password" value={smtpPass} onChange={e => setSmtpPass(e.target.value)} placeholder={config?.smtpPass === '********' ? '********' : ''} className="w-full bg-surface-container-low border border-outline-variant/30 rounded-xl p-3 text-sm focus:ring-primary focus:border-primary" />
+        </div>
+        <div>
+          <label className="text-xs font-bold text-on-surface tracking-wider mb-1.5 block">Email remitente</label>
+          <input value={emailFrom} onChange={e => setEmailFrom(e.target.value)} placeholder="reservas@erispetcare.com" className="w-full bg-surface-container-low border border-outline-variant/30 rounded-xl p-3 text-sm focus:ring-primary focus:border-primary" />
+        </div>
+        <div>
+          <label className="text-xs font-bold text-on-surface tracking-wider mb-1.5 block">Nombre remitente</label>
+          <input value={emailFromName} onChange={e => setEmailFromName(e.target.value)} placeholder="Eris Pet Care" className="w-full bg-surface-container-low border border-outline-variant/30 rounded-xl p-3 text-sm focus:ring-primary focus:border-primary" />
+        </div>
+      </div>
+
+      <div className="flex gap-3 mb-10">
+        <button onClick={handleSave} disabled={saving || !isConfigured} className="bg-primary text-white font-bold text-sm px-6 py-3 rounded-xl hover:scale-[0.98] transition-transform flex items-center gap-2 disabled:opacity-50">
+          <span className="material-symbols-outlined text-sm">save</span>
+          {saving ? 'Guardando...' : 'Guardar configuración'}
+        </button>
+      </div>
+
+      {/* Test email */}
+      <div className="p-6 bg-surface-container-low rounded-3xl border border-outline-variant/10">
+        <h3 className="text-sm font-bold text-primary mb-3 flex items-center gap-2">
+          <span className="material-symbols-outlined text-sm">send</span>
+          Probar envío
+        </h3>
+        <div className="flex gap-3">
+          <input value={testEmailTo} onChange={e => setTestEmailTo(e.target.value)} placeholder="email@ejemplo.com" className="flex-1 bg-white border border-outline-variant/30 rounded-xl p-3 text-sm focus:ring-primary focus:border-primary" />
+          <button onClick={handleTest} disabled={!isConfigured} className="bg-primary text-white font-bold text-sm px-5 py-3 rounded-xl hover:scale-[0.98] transition-transform disabled:opacity-50">
+            Enviar prueba
+          </button>
+        </div>
+        {testResult && (
+          <div className={`mt-3 text-sm font-semibold ${testResult.ok ? 'text-green-600' : 'text-rose-600'}`}>
+            {testResult.ok ? 'Configuración correcta' : `Error: ${testResult.error}`}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

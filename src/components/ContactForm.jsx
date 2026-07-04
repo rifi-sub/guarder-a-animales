@@ -23,6 +23,13 @@ export default function ContactForm() {
   const [registerStatus, setRegisterStatus] = useState('idle'); // idle, submitting, success, error
   const [registerError, setRegisterError] = useState('');
 
+  // Ocupación y lista de espera
+  const [occupationInfo, setOccupationInfo] = useState(null);
+  const [showWaitlistForm, setShowWaitlistForm] = useState(false);
+  const [waitlistStatus, setWaitlistStatus] = useState('idle');
+  const [waitlistMessage, setWaitlistMessage] = useState('');
+  const [waitlistPetName, setWaitlistPetName] = useState('');
+
   // Cargar tarifas de servicios al montar
   useEffect(() => {
     fetchRates();
@@ -67,6 +74,87 @@ export default function ContactForm() {
       setEstimatedPrice(null);
     }
   }, [formData.startDate, formData.endDate, formData.service, rates]);
+
+  // Consultar ocupación cuando cambien las fechas
+  useEffect(() => {
+    if (formData.startDate && formData.endDate) {
+      const checkOccupation = async () => {
+        try {
+          const start = new Date(formData.startDate);
+          const end = new Date(formData.endDate);
+          if (end < start) { setOccupationInfo(null); return; }
+          const res = await fetch(`${API_BASE}/api/occupation?month=${formData.startDate.substring(0, 7)}`);
+          if (res.ok) {
+            const data = await res.json();
+            const startDateStr = formData.startDate;
+            const endDateStr = formData.endDate;
+            const relevant = data.filter(d => d.date >= startDateStr && d.date <= endDateStr);
+            const fullDates = relevant.filter(d => d.isFull && !d.blocked);
+            const blockedDates = relevant.filter(d => d.blocked);
+            const totalDays = relevant.length;
+            const maxOccupied = Math.max(...relevant.map(d => d.occupied), 0);
+            const maxCapacity = Math.max(...relevant.map(d => d.capacity), 4);
+
+            if (blockedDates.length > 0) {
+              setOccupationInfo({
+                type: 'BLOCKED',
+                message: `Alguna(s) fecha(s) están bloqueadas (${blockedDates.map(d => d.date.split('-')[2]).join(', ')})`,
+                blockedDates
+              });
+            } else if (fullDates.length > 0) {
+              setOccupationInfo({
+                type: 'FULL',
+                message: `El ${fullDates.length} de ${totalDays} día(s) está completo. Puedes enviar la solicitud igualmente o apuntarte a la lista de espera.`,
+                fullDates
+              });
+            } else {
+              setOccupationInfo({
+                type: 'AVAILABLE',
+                message: `${maxCapacity - maxOccupied}/${maxCapacity} plazas disponibles en estas fechas`,
+                available: maxCapacity - maxOccupied,
+                capacity: maxCapacity
+              });
+            }
+          }
+        } catch (err) {
+          console.error('Error checking occupation:', err);
+        }
+      };
+      checkOccupation();
+    } else {
+      setOccupationInfo(null);
+    }
+  }, [formData.startDate, formData.endDate]);
+
+  const handleWaitlistSubmit = async (e) => {
+    e.preventDefault();
+    setWaitlistStatus('submitting');
+    setWaitlistMessage('');
+    try {
+      const res = await fetch(`${API_BASE}/api/waitlist`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          date: formData.startDate,
+          clientName: formData.name,
+          clientEmail: formData.email,
+          clientPhone: formData.phone,
+          petType: formData.petType,
+          petName: waitlistPetName,
+          service: formData.service,
+          notes: `Rango completo: ${formData.startDate} al ${formData.endDate}. ${formData.message || ''}`
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Error al apuntarse a la lista');
+      setWaitlistStatus('success');
+      setWaitlistMessage(data.message);
+      setTimeout(() => { setShowWaitlistForm(false); setWaitlistStatus('idle'); }, 5000);
+    } catch (err) {
+      setWaitlistStatus('error');
+      setWaitlistMessage(err.message);
+    }
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -347,6 +435,83 @@ export default function ContactForm() {
                 ></textarea>
               </div>
 
+              {occupationInfo && formData.startDate && formData.endDate && (
+                <div className={`p-4 rounded-2xl flex items-start gap-3 ${
+                  occupationInfo.type === 'AVAILABLE' ? 'bg-emerald-50 border border-emerald-200' :
+                  occupationInfo.type === 'FULL' ? 'bg-orange-50 border border-orange-200' :
+                  'bg-gray-50 border border-gray-200'
+                }`}>
+                  <span className={`material-symbols-outlined shrink-0 text-sm ${
+                    occupationInfo.type === 'AVAILABLE' ? 'text-emerald-600' :
+                    occupationInfo.type === 'FULL' ? 'text-orange-600' : 'text-gray-600'
+                  }`}>
+                    {occupationInfo.type === 'AVAILABLE' ? 'check_circle' :
+                     occupationInfo.type === 'FULL' ? 'warning' : 'block'}
+                  </span>
+                  <div className="flex-1">
+                    <p className={`text-xs font-bold ${
+                      occupationInfo.type === 'AVAILABLE' ? 'text-emerald-800' :
+                      occupationInfo.type === 'FULL' ? 'text-orange-800' : 'text-gray-800'
+                    }`}>
+                      {occupationInfo.message}
+                    </p>
+                    {occupationInfo.type === 'FULL' && !showWaitlistForm && (
+                      <button
+                        type="button"
+                        onClick={() => setShowWaitlistForm(true)}
+                        className="mt-2 text-xs font-bold text-orange-700 underline hover:text-orange-600"
+                      >
+                        Apuntarme a la lista de espera →
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {showWaitlistForm && (
+                <form onSubmit={handleWaitlistSubmit} className="p-5 bg-orange-50/70 border border-orange-200 rounded-2xl space-y-4">
+                  <div className="flex items-center gap-2">
+                    <span className="material-symbols-outlined text-orange-600 text-sm">playlist_add</span>
+                    <p className="font-bold text-sm text-orange-800">Lista de Espera</p>
+                  </div>
+                  <p className="text-[11px] text-orange-700/80">
+                    Déjanos tu nombre de mascota y te avisaremos si se libera una plaza.
+                  </p>
+                  <div className="space-y-2">
+                    <label className="text-[9px] font-bold text-on-surface-variant uppercase tracking-widest">Nombre de tu mascota</label>
+                    <input
+                      value={waitlistPetName}
+                      onChange={(e) => setWaitlistPetName(e.target.value)}
+                      className="w-full bg-white border-outline-variant/30 rounded-xl p-3 text-sm"
+                      placeholder="Ej. Luna, Toby..."
+                      required
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => { setShowWaitlistForm(false); setWaitlistStatus('idle'); }}
+                      className="flex-1 py-3 rounded-xl border border-outline-variant/30 text-xs font-bold text-on-surface-variant hover:bg-white transition-colors"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={waitlistStatus === 'submitting'}
+                      className="flex-1 bg-orange-600 text-white py-3 rounded-xl font-bold text-xs hover:bg-orange-700 transition-colors disabled:opacity-50"
+                    >
+                      {waitlistStatus === 'submitting' ? 'Enviando...' : 'Apuntarme'}
+                    </button>
+                  </div>
+                  {waitlistStatus === 'success' && (
+                    <p className="text-xs font-bold text-emerald-600 bg-emerald-50 p-3 rounded-xl">{waitlistMessage}</p>
+                  )}
+                  {waitlistStatus === 'error' && (
+                    <p className="text-xs font-bold text-rose-600 bg-rose-50 p-3 rounded-xl">{waitlistMessage}</p>
+                  )}
+                </form>
+              )}
+
               {estimatedPrice !== null && (
                 <div className="p-5 bg-primary/[0.03] border border-outline/10 rounded-2xl flex items-center justify-between">
                   <div>
@@ -364,7 +529,7 @@ export default function ContactForm() {
 
               <button
                 type="submit"
-                disabled={status === 'submitting'}
+                disabled={status === 'submitting' || showWaitlistForm}
                 className="w-full bg-terracota text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-2 hover:scale-[0.98] transition-transform disabled:opacity-55 disabled:cursor-not-allowed text-sm"
               >
                 <span className="material-symbols-outlined text-sm">

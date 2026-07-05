@@ -5,7 +5,7 @@ const API_BASE = window.location.hostname === 'localhost' || window.location.hos
 const MONTHS = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
 const DAY_HEADERS = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
 
-export default function Calendar() {
+export default function Calendar({ isAdmin = false, onDayClick = null }) {
   const now = new Date();
   const [currentYear, setCurrentYear] = useState(now.getFullYear());
   const [currentMonth, setCurrentMonth] = useState(now.getMonth());
@@ -83,20 +83,88 @@ export default function Calendar() {
     const avStatus = dbAvailability[dateStr];
 
     if (occ?.blocked) {
-      return { bgClass: 'bg-red-400/20 border-red-400/30', dot: 'bg-red-400', label: 'Bloqueado', blocked: true, blockReason: occ.blockReason, occ };
+      return { bgClass: 'bg-red-100 border-red-200 text-red-900', label: 'Bloqueado', blocked: true, blockReason: occ.blockReason, occ };
     }
 
     if (avStatus) {
-      const label = avStatus === 'bg-green-500' ? 'Disponible' : avStatus === 'bg-red-400' ? 'Reservado' : 'Consultar';
-      return { bgClass: `${avStatus}/10 border-${avStatus.replace('bg-', '')}/30`, dot: avStatus, label, blocked: false, occ };
+      const isGreen = avStatus.includes('green');
+      const isRed = avStatus.includes('red');
+      const label = isGreen ? 'Disponible' : isRed ? 'Reservado' : 'Consultar';
+      const bgClass = isGreen ? 'bg-green-100 border-green-200 text-green-900' : isRed ? 'bg-red-100 border-red-200 text-red-900' : 'bg-amber-100 border-amber-200 text-amber-900';
+      return { bgClass, label, blocked: false, occ };
     }
 
-    if (!occ) return { bgClass: 'bg-green-500/10 border-green-500/30', dot: 'bg-green-500', label: 'Disponible', blocked: false, occ: null };
-    if (occ.isFull) return { bgClass: 'bg-red-400/10 border-red-400/30', dot: 'bg-red-400', label: 'Completo', blocked: false, occ };
-    if (occ.occupied > 0) return { bgClass: 'bg-orange-300/10 border-orange-300/30', dot: 'bg-orange-300', label: `${occ.available} plaza(s)`, blocked: false, occ };
+    if (!occ) return { bgClass: 'bg-green-100 border-green-200 text-green-900', label: 'Disponible', blocked: false, occ: null };
+    if (occ.isFull) return { bgClass: 'bg-red-100 border-red-200 text-red-900', label: 'Completo', blocked: false, occ };
+    if (occ.occupied > 0) return { bgClass: 'bg-amber-100 border-amber-200 text-amber-900', label: `${occ.available} plaza(s)`, blocked: false, occ };
 
-    return { bgClass: 'bg-green-500/10 border-green-500/30', dot: 'bg-green-500', label: 'Disponible', blocked: false, occ };
+    return { bgClass: 'bg-green-100 border-green-200 text-green-900', label: 'Disponible', blocked: false, occ };
   };
+
+  const calendarContent = (
+    <div className="bg-surface-container-low rounded-[2rem] p-8 shadow-sm h-full">
+      <div className="flex items-center justify-between mb-8">
+        <h3 className="text-xl font-bold text-primary">{MONTHS[currentMonth]} {currentYear}</h3>
+        <div className="flex gap-2">
+          <button
+            onClick={() => navigate('prev')}
+            className="w-10 h-10 rounded-full border border-outline-variant flex items-center justify-center text-on-surface-variant hover:bg-white transition-colors"
+          >
+            <span className="material-symbols-outlined">chevron_left</span>
+          </button>
+          <button
+            onClick={() => navigate('next')}
+            className="w-10 h-10 rounded-full border border-outline-variant flex items-center justify-center text-on-surface-variant hover:bg-white transition-colors"
+          >
+            <span className="material-symbols-outlined">chevron_right</span>
+          </button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-7 gap-2 text-center text-xs font-bold text-on-surface-variant/50 uppercase tracking-widest mb-4">
+        {DAY_HEADERS.map(d => <div key={d}>{d}</div>)}
+      </div>
+
+      <div className="grid grid-cols-7 gap-3">
+        {days.map((item, index) => {
+          if (!item) {
+            return <div key={`empty-${index}`} />;
+          }
+          const info = getDayInfo(item.dateStr);
+
+          return (
+            <button
+              key={item.dateStr}
+              onClick={() => {
+                if (isAdmin && onDayClick) {
+                  onDayClick(item.dateStr); // Pass the full date string
+                }
+              }}
+              disabled={!isAdmin}
+              className={`aspect-square rounded-2xl border ${info.bgClass || 'bg-white border-outline-variant/10'} flex flex-col items-center justify-center relative transition-colors ${isAdmin ? 'cursor-pointer hover:ring-2 hover:ring-primary hover:scale-105' : 'cursor-default'}`}
+              title={info.blocked ? `Bloqueado: ${info.blockReason}` : `${info.label} - ${info.occ ? `${info.occ.occupied}/${info.occ.capacity} ocupadas` : ''}`}
+            >
+              <span className="relative z-10 text-base font-bold">{item.day}</span>
+              {info.blocked && (
+                <div className="absolute top-1 right-1">
+                  <span className="material-symbols-outlined text-red-900/50 text-[10px]">lock</span>
+                </div>
+              )}
+              {info.occ && !info.blocked && (
+                <span className="absolute bottom-1 text-[10px] text-black/40 font-bold">
+                  {info.occ.occupied}/{info.occ.capacity}
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+
+  if (isAdmin) {
+    return calendarContent;
+  }
 
   return (
     <section className="py-section-gap px-margin-mobile md:px-margin-desktop bg-white" id="disponibilidad">
@@ -110,80 +178,23 @@ export default function Calendar() {
             <p className="text-body-lg text-on-surface-variant mt-8 mb-10">
               Como acepto un número reducido de mascotas, las plazas vuelan. Echa un vistazo al calendario y escríbeme para confirmar la disponibilidad de tus fechas.
             </p>
-            <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-4 mt-8">
               <div className="flex items-center gap-3">
-                <span className="w-3 h-3 rounded-full bg-green-500"></span>
-                <span className="text-sm font-semibold">Disponible</span>
+                <span className="w-5 h-5 rounded-md bg-green-100 border border-green-200"></span>
+                <span className="text-sm font-semibold text-on-surface-variant">Disponible</span>
               </div>
               <div className="flex items-center gap-3">
-                <span className="w-3 h-3 rounded-full bg-orange-300"></span>
-                <span className="text-sm font-semibold">Plazas limitadas</span>
+                <span className="w-5 h-5 rounded-md bg-amber-100 border border-amber-200"></span>
+                <span className="text-sm font-semibold text-on-surface-variant">Plazas limitadas</span>
               </div>
               <div className="flex items-center gap-3">
-                <span className="w-3 h-3 rounded-full bg-red-400"></span>
-                <span className="text-sm font-semibold">Completo / Reservado</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <span className="w-3 h-3 rounded-full bg-gray-500"></span>
-                <span className="text-sm font-semibold">Bloqueado / No disponible</span>
+                <span className="w-5 h-5 rounded-md bg-red-100 border border-red-200"></span>
+                <span className="text-sm font-semibold text-on-surface-variant">Completo / Bloqueado</span>
               </div>
             </div>
           </div>
           <div className="lg:col-span-7">
-            <div className="bg-surface-container-low rounded-[2rem] p-8 shadow-sm">
-              <div className="flex items-center justify-between mb-8">
-                <h3 className="text-xl font-bold text-primary">{MONTHS[currentMonth]} {currentYear}</h3>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => navigate('prev')}
-                    className="w-10 h-10 rounded-full border border-outline-variant flex items-center justify-center text-on-surface-variant hover:bg-white transition-colors"
-                  >
-                    <span className="material-symbols-outlined">chevron_left</span>
-                  </button>
-                  <button
-                    onClick={() => navigate('next')}
-                    className="w-10 h-10 rounded-full border border-outline-variant flex items-center justify-center text-on-surface-variant hover:bg-white transition-colors"
-                  >
-                    <span className="material-symbols-outlined">chevron_right</span>
-                  </button>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-7 gap-2 text-center text-xs font-bold text-on-surface-variant/50 uppercase tracking-widest mb-4">
-                {DAY_HEADERS.map(d => <div key={d}>{d}</div>)}
-              </div>
-
-              <div className="grid grid-cols-7 gap-3">
-                {days.map((item, index) => {
-                  if (!item) {
-                    return <div key={`empty-${index}`} />;
-                  }
-                  const info = getDayInfo(item.dateStr);
-
-                  return (
-                    <div
-                      key={item.dateStr}
-                      className={`aspect-square rounded-2xl bg-white border ${info.bgClass || 'border-outline-variant/10'} flex flex-col items-center justify-center relative group hover:border-primary transition-colors cursor-default`}
-                      title={info.blocked ? `Bloqueado: ${info.blockReason}` : `${info.label} - ${info.occ ? `${info.occ.occupied}/${info.occ.capacity} ocupadas` : ''}`}
-                    >
-                      <span className="relative z-10 text-sm font-semibold">{item.day}</span>
-                      {info.blocked ? (
-                        <div className="absolute -top-1 -right-1 w-4 h-4 bg-gray-500 rounded-full flex items-center justify-center">
-                          <span className="text-[8px] text-white font-bold">⛔</span>
-                        </div>
-                      ) : (
-                        <div className={`absolute bottom-2 w-1.5 h-1.5 rounded-full ${info.dot}`}></div>
-                      )}
-                      {info.occ && !info.blocked && (
-                        <span className="absolute bottom-0 text-[8px] text-on-surface-variant/50 font-semibold">
-                          {info.occ.occupied}/{info.occ.capacity}
-                        </span>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
+            {calendarContent}
           </div>
         </div>
       </div>

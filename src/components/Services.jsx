@@ -1,91 +1,176 @@
-const services = [
+import React from 'react';
+
+const leftColumn = [
   {
-    icon: 'home',
-    title: 'Guardería en mi hogar',
-    desc: 'Tu mascota se queda en casa, en un ambiente familiar, seguro y siempre acompañada.'
+    title: "Alojamiento de mascotas",
+    subtitle: "en casa del cuidador",
+    basePrice: "18 €",
+    unit: "por noche",
+    icon: "luggage", 
+    extras: [
+      { name: "Tarifa de temporada alta", price: "22 €", unit: "por noche", info: true },
+      { name: "Tarifa para cachorro", price: "+ 4 €", unit: "por noche" },
+      { name: "Perro adicional", price: "+ 12 €", unit: "por perro por noche" },
+      { name: "Gato adicional", price: "+ 8 €", unit: "por gato por noche" },
+      { name: "Reserva de última hora", price: "+ 8 €", unit: "por reserva", info: true }
+    ],
+    cancelPolicy: "3 días"
   },
   {
-    icon: 'apartment',
-    title: 'Cuidado a domicilio',
-    desc: 'Voy a tu casa para cuidar de tu mascota en su propio entorno de siempre.'
+    title: "Cuidado a domicilio",
+    subtitle: "en tu casa",
+    basePrice: "24 €",
+    unit: "por noche",
+    icon: "home",
+    extras: [
+      { name: "Tarifa de temporada alta", price: "28 €", unit: "por noche", info: true },
+      { name: "Perro adicional", price: "+ 12 €", unit: "por perro por noche" },
+      { name: "Gato adicional", price: "+ 8 €", unit: "por gato por noche" },
+      { name: "Reserva de última hora", price: "+ 10 €", unit: "por reserva", info: true }
+    ],
+    cancelPolicy: "3 días"
   },
   {
-    icon: 'notifications',
-    title: 'Visitas',
-    desc: 'Visitas puntuales para dar de comer, jugar, limpiar y hacer compañía.'
-  },
-  {
-    icon: 'directions_walk',
-    title: 'Paseos',
-    desc: 'Paseos tranquilos y adaptados al ritmo y carácter de tu perro.'
-  },
-  {
-    icon: 'pill',
-    title: 'Administración de medicación',
-    desc: 'Experiencia dando medicación, con especial cuidado y paciencia en gatos.'
-  },
-  {
-    icon: 'photo_camera',
-    title: 'Fotos y vídeos diarios',
-    desc: 'Recibes actualizaciones cada día para verle feliz donde estés.'
-  },
-  {
-    icon: 'potted_plant',
-    title: 'Enriquecimiento ambiental',
-    desc: 'Juego, estímulos y descanso para que su estancia sea plena y equilibrada.'
-  },
-  {
-    icon: 'favorite',
-    title: 'Cuidados personalizados',
-    desc: 'Cada mascota es única: adapto rutinas, comida y mimos a sus necesidades.'
+    title: "Visitas a domicilio",
+    subtitle: "visitas en tu casa",
+    basePrice: "17 €",
+    unit: "por visita",
+    icon: "pets",
+    extras: [
+      { name: "Tarifa de 60 minutos", price: "+ 8 €", unit: "por visita" },
+      { name: "Tarifa de temporada alta", price: "+ 4 €", unit: "por visita", info: true },
+      { name: "Perro adicional", price: "+ 6 €", unit: "por perro por visita" },
+      { name: "Gato adicional", price: "+ 5 €", unit: "por gato por visita" },
+      { name: "Reserva de última hora", price: "+ 10 €", unit: "por reserva", info: true }
+    ],
+    cancelPolicy: "3 días"
   }
 ];
 
-const welcomePets = ['Gatos', 'Conejos', 'Cobayas', 'Hámsters', 'Peces'];
-const serviceRules = [
-  'Los perros se aceptan principalmente para visitas a domicilio y paseos.',
-  'Aves y reptiles se valoran de forma individual según cada caso.',
-  'Por el momento no se aceptan hurones.'
+const rightColumn = [
+  {
+    title: "Guardería de día",
+    subtitle: "en casa del cuidador",
+    basePrice: "18 €",
+    unit: "por día",
+    icon: "wb_sunny",
+    extras: [
+      { name: "Tarifa de temporada alta", price: "22 €", unit: "por día", info: true },
+      { name: "Tarifa para cachorro", price: "+ 4 €", unit: "por día" },
+      { name: "Perro adicional", price: "+ 10 €", unit: "por perro por día" },
+      { name: "Recogida y entrega por el cuidador", price: "20 €", unit: "por día" },
+      { name: "Reserva de última hora", price: "+ 5 €", unit: "por reserva", info: true }
+    ],
+    cancelPolicy: "1 día"
+  },
+  {
+    title: "Paseo de perros",
+    subtitle: "en tu barrio",
+    basePrice: "10 €",
+    unit: "por paseo",
+    icon: "pets",
+    extras: [
+      { name: "Tarifa de 60 minutos", price: "+ 7 €", unit: "por paseo" },
+      { name: "Tarifa de temporada alta", price: "+ 3 €", unit: "por paseo", info: true },
+      { name: "Perro adicional", price: "+ 5 €", unit: "por perro por paseo" },
+      { name: "Reserva de última hora", price: "+ 5 €", unit: "por reserva", info: true }
+    ],
+    cancelPolicy: "3 días"
+  }
 ];
 
-export default function Services() {
-  return (
-    <section className="py-section-gap px-margin-mobile md:px-margin-desktop bg-surface-container-lowest" id="servicios">
-      <div className="max-w-container-max-width mx-auto">
-        <div className="text-center mb-16">
-          <span className="text-xs font-bold uppercase tracking-widest text-terracota mb-4 block">SERVICIOS</span>
-          <h2 className="font-display-lg text-headline-md md:text-5xl text-primary leading-tight">
-            Todo lo que tu mascota necesita para sentirse en casa
-          </h2>
-          <p className="text-body-lg text-on-surface-variant max-w-2xl mx-auto mt-6">
-            Servicios pensados con calma y cariño, siempre con atención individual y comunicación constante contigo.
-          </p>
+const ServiceBlock = ({ service, isExpanded, onToggle }) => (
+  <div className={`mb-10 last:mb-0 bg-white rounded-2xl transition-all ${isExpanded ? 'border border-outline-variant/30 shadow-sm p-6' : 'border-b border-outline-variant/30 pb-6'}`}>
+    <div 
+      className="flex justify-between items-start cursor-pointer group"
+      onClick={onToggle}
+    >
+      <div className="flex gap-4 items-start">
+        <span className={`material-symbols-outlined text-[32px] transition-colors ${isExpanded ? 'text-primary' : 'text-on-surface/80 group-hover:text-primary'}`}>{service.icon}</span>
+        <div>
+          <h3 className={`text-[17px] font-bold tracking-tight transition-colors ${isExpanded ? 'text-primary' : 'text-on-surface group-hover:text-primary'}`}>{service.title}</h3>
+          <p className="text-[14px] text-on-surface-variant/80 mt-0.5">{service.subtitle}</p>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
-          {services.map((service, index) => (
-            <div key={index} className="service-card p-8 bg-surface-container-low rounded-3xl border border-outline-variant/10">
-              <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center mb-6 shadow-sm">
-                <span className="material-symbols-outlined text-primary">{service.icon}</span>
-              </div>
-              <h4 className="text-xl font-bold text-primary mb-3">{service.title}</h4>
-              <p className="text-sm text-on-surface-variant">{service.desc}</p>
+      </div>
+      <div className="flex items-center gap-4">
+        <div className="text-right hidden sm:block">
+          <div className="text-[17px] font-bold text-on-surface tracking-tight">{service.basePrice}</div>
+          <div className="text-[13px] text-on-surface-variant/80">{service.unit}</div>
+        </div>
+        <button className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${isExpanded ? 'bg-primary/10 text-primary' : 'bg-surface-container-lowest text-on-surface-variant group-hover:bg-surface-container-low'}`}>
+          <span className={`material-symbols-outlined transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}>expand_more</span>
+        </button>
+      </div>
+    </div>
+
+    {/* Vista Móvil Precio (solo si no está expandido) */}
+    {!isExpanded && (
+      <div className="sm:hidden flex justify-between items-center mt-3 pl-12 text-on-surface-variant">
+        <span className="text-[13px]">{service.unit}</span>
+        <span className="text-[15px] font-bold text-on-surface">{service.basePrice}</span>
+      </div>
+    )}
+
+    {/* Contenido Expandible */}
+    <div className={`transition-all duration-300 ease-in-out overflow-hidden ${isExpanded ? 'max-h-[500px] opacity-100 mt-8 pt-6 border-t border-outline-variant/20' : 'max-h-0 opacity-0'}`}>
+      <div className="space-y-4">
+        {service.extras.map((extra, idx) => (
+          <div key={idx} className="flex justify-between items-center text-[14px]">
+            <div className="flex items-center gap-1 text-on-surface/90">
+              {extra.name}
+              {extra.info && (
+                <span className="material-symbols-outlined text-[16px] text-on-surface-variant/50 cursor-help" title="Información adicional">info</span>
+              )}
             </div>
-          ))}
-        </div>
-        <div className="bg-surface-container-low rounded-[2rem] p-10 flex flex-col md:flex-row justify-between items-center gap-12 border border-outline-variant/20">
-          <div className="space-y-6 flex-1">
-            <h4 className="text-2xl font-bold text-primary">Mascotas bienvenidas en casa</h4>
-            <div className="flex flex-wrap gap-3">
-              {welcomePets.map((pet, idx) => (
-                <span key={idx} className="px-6 py-2 bg-white rounded-full border border-outline-variant/30 text-sm font-semibold">
-                  ✓ {pet}
-                </span>
-              ))}
+            <div className="text-right">
+              <div className="font-bold text-on-surface tracking-tight">{extra.price}</div>
+              <div className="text-[12px] text-on-surface-variant/80">{extra.unit}</div>
             </div>
           </div>
-          <div className="space-y-4 text-sm text-on-surface-variant border-l border-outline-variant/30 pl-10 hidden md:block">
-            {serviceRules.map((rule, idx) => (
-              <p key={idx} className="flex items-center gap-3">○ {rule}</p>
+        ))}
+      </div>
+
+      <div className="mt-8 flex items-center gap-2 text-[14px] text-on-surface/90 bg-green-50 p-4 rounded-xl border border-green-100/50">
+        <span className="material-symbols-outlined text-green-600 text-[20px]">check_circle</span>
+        <p>
+          Puedes cancelar con hasta <span className="font-bold text-green-700">{service.cancelPolicy}</span> de antelación.
+        </p>
+      </div>
+    </div>
+  </div>
+);
+
+export default function Services() {
+  const [expandedId, setExpandedId] = React.useState(null);
+
+  const toggleAccordion = (title) => {
+    setExpandedId(expandedId === title ? null : title);
+  };
+
+  return (
+    <section className="py-20 px-6 md:px-12 bg-white" id="servicios">
+      <div className="max-w-[1100px] mx-auto">
+        <h2 className="text-[28px] font-bold text-on-surface mb-12">Servicios</h2>
+        
+        <div className="flex flex-col lg:flex-row gap-8 lg:gap-16">
+          <div className="flex-1">
+            {leftColumn.map((service, idx) => (
+              <ServiceBlock 
+                key={idx} 
+                service={service} 
+                isExpanded={expandedId === service.title}
+                onToggle={() => toggleAccordion(service.title)}
+              />
+            ))}
+          </div>
+          <div className="flex-1">
+            {rightColumn.map((service, idx) => (
+              <ServiceBlock 
+                key={idx} 
+                service={service} 
+                isExpanded={expandedId === service.title}
+                onToggle={() => toggleAccordion(service.title)}
+              />
             ))}
           </div>
         </div>

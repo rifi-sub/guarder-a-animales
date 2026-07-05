@@ -5,6 +5,7 @@ import FinancialDashboard from './FinancialDashboard';
 import InvoicingPanel from './InvoicingPanel';
 import ClientsFidelityPanel from './ClientsFidelityPanel';
 import DailyCarePanel from './DailyCarePanel';
+import Calendar from './Calendar';
 
 const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? '' : 'https://alilyback.duckdns.org/eris';
 
@@ -63,8 +64,9 @@ export default function AdminPanel() {
   const [newPetNotes, setNewPetNotes] = useState('');
   const [newPetClientId, setNewPetClientId] = useState('');
 
-  // Tarifas y cálculos
+  // Tarifas, Cupones y cálculos
   const [rates, setRates] = useState([]);
+  const [coupons, setCoupons] = useState([]);
 
   // Lista de espera
   const [waitlistEntries, setWaitlistEntries] = useState([]);
@@ -223,6 +225,10 @@ export default function AdminPanel() {
         }
         if (resUp.ok) setUpcomingStays(await resUp.json());
       }
+      if (activeTab === 'coupons') {
+        const resC = await fetch(`${API_BASE}/api/admin/coupons`, { headers });
+        if (resC.ok) setCoupons(await resC.json());
+      }
     } catch (err) {
       console.error('Error fetching data:', err);
     }
@@ -257,7 +263,7 @@ export default function AdminPanel() {
   };
 
   // --- ACCIONES DE TARIFAS ---
-  const handleSaveRate = async (serviceName, ratePerUnit, unitType) => {
+  const handleSaveRate = async (serviceName, ratePerUnit, unitType, extraRates = null) => {
     try {
       const res = await fetch(`${API_BASE}/api/admin/rates`, {
         method: 'POST',
@@ -265,7 +271,7 @@ export default function AdminPanel() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ serviceName, ratePerUnit: parseFloat(ratePerUnit), unitType })
+        body: JSON.stringify({ serviceName, ratePerUnit: parseFloat(ratePerUnit), unitType, extraRates })
       });
       if (res.ok) {
         alert('Tarifa guardada correctamente.');
@@ -281,13 +287,12 @@ export default function AdminPanel() {
   };
 
   // --- ACCIONES DE CAPACIDAD (MODAL) ---
-  const openDayModal = (dayNum) => {
-    const dateStr = `${calYear}-${String(calMonth + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
+  const openDayModal = (dateStr) => {
     const existingConfig = capacityConfigs.find(c => c.date === dateStr);
     const existingAvail = availability[dateStr];
 
     setModalDateStr(dateStr);
-    setModalDayNum(dayNum);
+    setModalDayNum(parseInt(dateStr.split('-')[2], 10));
     setModalMaxPets(existingConfig?.maxPets ?? 4);
     setModalBlockType(existingConfig?.blockType || '');
     setModalReason(existingConfig?.reason || '');
@@ -1037,6 +1042,18 @@ export default function AdminPanel() {
             >
               <span className="material-symbols-outlined">mail</span>
               Email
+            </button>
+
+            <button
+              onClick={() => setActiveTab('coupons')}
+              className={`w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl font-bold text-sm transition-all ${
+                activeTab === 'coupons'
+                  ? 'bg-primary text-white shadow-md'
+                  : 'text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface'
+              }`}
+            >
+              <span className="material-symbols-outlined">sell</span>
+              Cupones
             </button>
           </nav>
         </div>
@@ -2025,58 +2042,8 @@ export default function AdminPanel() {
                 </div>
               </div>
 
-              <div className="lg:col-span-7 bg-surface-container-low rounded-[2.5rem] p-8 shadow-sm">
-                <div className="flex items-center justify-between mb-8">
-                  <h3 className="text-xl font-bold text-primary">{MONTH_NAMES[calMonth]} {calYear}</h3>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => {
-                        if (calMonth === 0) { setCalMonth(11); setCalYear(y => y - 1); }
-                        else setCalMonth(m => m - 1);
-                      }}
-                      className="w-8 h-8 rounded-full border border-outline-variant flex items-center justify-center text-on-surface-variant hover:bg-white transition-colors"
-                    >
-                      <span className="material-symbols-outlined text-sm">chevron_left</span>
-                    </button>
-                    <button
-                      onClick={() => {
-                        if (calMonth === 11) { setCalMonth(0); setCalYear(y => y + 1); }
-                        else setCalMonth(m => m + 1);
-                      }}
-                      className="w-8 h-8 rounded-full border border-outline-variant flex items-center justify-center text-on-surface-variant hover:bg-white transition-colors"
-                    >
-                      <span className="material-symbols-outlined text-sm">chevron_right</span>
-                    </button>
-                  </div>
-                </div>
-                
-                <div className="grid grid-cols-7 gap-2 text-center text-xs font-bold text-on-surface-variant/50 uppercase tracking-widest mb-4">
-                  <div>L</div><div>M</div><div>X</div><div>J</div><div>V</div><div>S</div><div>D</div>
-                </div>
-                
-                <div className="grid grid-cols-7 gap-3">
-                  {calendarDays.map((item, index) => {
-                    if (!item) return <div key={`empty-${index}`} />;
-                    const occ = capacityOccupation.find(o => o.date === item.dateStr);
-                    return (
-                      <button
-                        key={item.dateStr}
-                        onClick={() => openDayModal(item.day)}
-                        disabled={item.isPast}
-                        className={`${item.isPast ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer hover:ring-2 hover:ring-primary'} aspect-square rounded-2xl bg-white border border-outline-variant/10 flex flex-col items-center justify-center relative group transition-all`}
-                        title={`Clic para configurar día ${item.day}${occ ? ` (${occ.occupied}/${occ.capacity} ocupadas)` : ''}`}
-                      >
-                        <span className="relative z-10 font-semibold text-sm">{item.day}</span>
-                        <div className={`absolute bottom-1 w-1.5 h-1.5 rounded-full ${item.status}`}></div>
-                        {occ && (
-                          <span className="absolute -top-1 right-0 text-[7px] text-on-surface-variant/50 font-bold">
-                            {occ.occupied}/{occ.capacity}
-                          </span>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
+              <div className="lg:col-span-7">
+                <Calendar isAdmin={true} onDayClick={openDayModal} />
               </div>
             </div>
 
@@ -2410,6 +2377,118 @@ export default function AdminPanel() {
         {/* TAB 12: EMAIL */}
         {activeTab === 'email' && (
           <EmailSettingsPanel token={token} />
+        )}
+
+        {/* TAB 13: CUPONES */}
+        {activeTab === 'coupons' && (
+          <div className="animate-fade-in max-w-5xl">
+            <div className="flex items-center justify-between mb-8">
+              <div>
+                <h2 className="text-3xl font-bold text-on-surface tracking-tight">Cupones de Descuento</h2>
+                <p className="text-on-surface-variant mt-1">Crea códigos promocionales para tus clientes.</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+              <div className="md:col-span-1 bg-white border border-outline-variant/30 rounded-3xl p-6">
+                <h3 className="font-bold text-lg mb-6 text-primary">Crear Cupón</h3>
+                <form onSubmit={async (e) => {
+                  e.preventDefault();
+                  const fd = new FormData(e.target);
+                  const payload = Object.fromEntries(fd.entries());
+                  try {
+                    const res = await fetch(`${API_BASE}/api/admin/coupons`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                      body: JSON.stringify(payload)
+                    });
+                    if (res.ok) {
+                      e.target.reset();
+                      fetchData();
+                    } else {
+                      const data = await res.json();
+                      alert(data.error);
+                    }
+                  } catch (err) {
+                    alert('Error creando cupón');
+                  }
+                }} className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-bold text-on-surface-variant uppercase mb-1">Código</label>
+                    <input type="text" name="code" required className="w-full bg-surface-container-lowest border border-outline-variant/30 rounded-xl px-4 py-2 uppercase font-mono focus:ring-primary focus:border-primary" placeholder="Ej: NAVIDAD15" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-on-surface-variant uppercase mb-1">Tipo</label>
+                    <select name="discountType" className="w-full bg-surface-container-lowest border border-outline-variant/30 rounded-xl px-4 py-2">
+                      <option value="PERCENTAGE">Porcentaje (%)</option>
+                      <option value="FIXED">Cantidad Fija (€)</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-on-surface-variant uppercase mb-1">Valor</label>
+                    <input type="number" step="0.01" name="discountValue" required className="w-full bg-surface-container-lowest border border-outline-variant/30 rounded-xl px-4 py-2" placeholder="Ej: 15" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-on-surface-variant uppercase mb-1">Límite de usos</label>
+                    <input type="number" name="maxUses" className="w-full bg-surface-container-lowest border border-outline-variant/30 rounded-xl px-4 py-2" placeholder="Vacío = Ilimitado" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-on-surface-variant uppercase mb-1">Caducidad</label>
+                    <input type="date" name="expiresAt" className="w-full bg-surface-container-lowest border border-outline-variant/30 rounded-xl px-4 py-2" />
+                  </div>
+                  <button type="submit" className="w-full bg-primary hover:bg-primary/90 text-white font-bold py-3 rounded-xl transition-colors mt-2">Crear Código</button>
+                </form>
+              </div>
+
+              <div className="md:col-span-2">
+                <div className="bg-white border border-outline-variant/30 rounded-3xl overflow-hidden">
+                  <table className="w-full text-left text-sm">
+                    <thead className="bg-surface-container-lowest text-on-surface-variant font-bold border-b border-outline-variant/20">
+                      <tr>
+                        <th className="px-6 py-4">Código</th>
+                        <th className="px-6 py-4">Descuento</th>
+                        <th className="px-6 py-4">Usos</th>
+                        <th className="px-6 py-4">Estado</th>
+                        <th className="px-6 py-4 text-right">Acciones</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-outline-variant/10">
+                      {coupons.map(c => {
+                        const isExpired = c.expiresAt && new Date(c.expiresAt) < new Date();
+                        const isExhausted = c.maxUses && c.usedCount >= c.maxUses;
+                        const isValid = c.active && !isExpired && !isExhausted;
+                        return (
+                          <tr key={c.id} className="hover:bg-surface-container-lowest/50 transition-colors">
+                            <td className="px-6 py-4 font-mono font-bold text-primary">{c.code}</td>
+                            <td className="px-6 py-4">{c.discountValue}{c.discountType === 'PERCENTAGE' ? '%' : '€'}</td>
+                            <td className="px-6 py-4">{c.usedCount} {c.maxUses ? `/ ${c.maxUses}` : ''}</td>
+                            <td className="px-6 py-4">
+                              <span className={`px-2 py-1 rounded-lg text-xs font-bold ${isValid ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                {isValid ? 'Activo' : (isExpired ? 'Caducado' : (isExhausted ? 'Agotado' : 'Inactivo'))}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 text-right">
+                              <button onClick={async () => {
+                                if (confirm('¿Eliminar cupón?')) {
+                                  await fetch(`${API_BASE}/api/admin/coupons/${c.id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` }});
+                                  fetchData();
+                                }
+                              }} className="text-red-500 hover:text-red-700 p-2 rounded-lg hover:bg-red-50 transition-colors material-symbols-outlined">delete</button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                      {coupons.length === 0 && (
+                        <tr>
+                          <td colSpan="5" className="px-6 py-12 text-center text-on-surface-variant">No hay cupones creados.</td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
         )}
 
         {/* MODAL FICHA 360 Y TIMELINE DE INTERACCIONES */}
@@ -2903,42 +2982,126 @@ function EmailSettingsPanel({ token }) {
 function RateRow({ rate, onSave }) {
   const [val, setVal] = useState(rate.ratePerUnit);
   const [unit, setUnit] = useState(rate.unitType);
+  const [extras, setExtras] = useState(() => {
+    try {
+      return rate.extraRates ? JSON.parse(rate.extraRates) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const handleAddExtra = () => {
+    setExtras([...extras, { name: '', price: 0, type: 'per_unit' }]);
+  };
+
+  const handleUpdateExtra = (index, field, value) => {
+    const newExtras = [...extras];
+    newExtras[index][field] = value;
+    setExtras(newExtras);
+  };
+
+  const handleRemoveExtra = (index) => {
+    setExtras(extras.filter((_, i) => i !== index));
+  };
 
   return (
-    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 bg-surface-container-low rounded-3xl border border-outline-variant/10">
-      <div>
-        <h4 className="font-bold text-primary text-base">{rate.serviceName}</h4>
-        <p className="text-xs text-on-surface-variant mt-1">Tarifa base actual</p>
-      </div>
-      <div className="flex items-center gap-3 self-end sm:self-auto">
-        <div className="relative w-28">
-          <input
-            type="number"
-            step="0.01"
-            value={val}
-            onChange={(e) => setVal(e.target.value)}
-            className="w-full bg-white border border-outline-variant/30 rounded-xl p-3 pr-8 font-semibold text-sm focus:ring-primary focus:border-primary text-right"
-          />
-          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-on-surface-variant/75">€</span>
+    <div className="flex flex-col gap-4 p-6 bg-surface-container-low rounded-3xl border border-outline-variant/10">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h4 className="font-bold text-primary text-lg">{rate.serviceName}</h4>
+          <p className="text-xs text-on-surface-variant mt-1">Configuración base y extras</p>
         </div>
-        <span className="text-sm text-on-surface-variant">/</span>
-        <select
-          value={unit}
-          onChange={(e) => setUnit(e.target.value)}
-          className="bg-white border border-outline-variant/30 rounded-xl p-3 font-semibold text-sm focus:ring-primary focus:border-primary text-on-surface-variant"
-        >
-          <option value="noche">noche</option>
-          <option value="día">día</option>
-          <option value="visita">visita</option>
-          <option value="paseo">paseo</option>
-        </select>
-        <button
-          onClick={() => onSave(rate.serviceName, val, unit)}
-          className="bg-primary text-white font-bold text-xs px-5 py-3 rounded-xl hover:scale-[0.98] transition-transform flex items-center gap-1.5"
-        >
-          <span className="material-symbols-outlined text-sm">save</span>
-          Guardar
-        </button>
+        <div className="flex items-center gap-3 self-start sm:self-auto">
+          <div className="relative w-28">
+            <input
+              type="number"
+              step="0.01"
+              value={val}
+              onChange={(e) => setVal(e.target.value)}
+              className="w-full bg-white border border-outline-variant/30 rounded-xl p-3 pr-8 font-semibold text-sm focus:ring-primary focus:border-primary text-right"
+            />
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-on-surface-variant/75">€</span>
+          </div>
+          <span className="text-sm text-on-surface-variant">/</span>
+          <select
+            value={unit}
+            onChange={(e) => setUnit(e.target.value)}
+            className="bg-white border border-outline-variant/30 rounded-xl p-3 font-semibold text-sm focus:ring-primary focus:border-primary text-on-surface-variant"
+          >
+            <option value="noche">noche</option>
+            <option value="día">día</option>
+            <option value="visita">visita</option>
+            <option value="paseo">paseo</option>
+            <option value="reserva">reserva</option>
+          </select>
+          <button
+            onClick={() => onSave(rate.serviceName, val, unit, extras)}
+            className="bg-primary text-white font-bold text-xs px-5 py-3 rounded-xl hover:scale-[0.98] transition-transform flex items-center gap-1.5 ml-2"
+          >
+            <span className="material-symbols-outlined text-sm">save</span>
+            Guardar
+          </button>
+        </div>
+      </div>
+
+      {/* Extras Section */}
+      <div className="mt-4 pt-4 border-t border-outline-variant/10">
+        <div className="flex items-center justify-between mb-3">
+          <h5 className="text-sm font-bold text-on-surface-variant uppercase tracking-wider">Tarifas Extra y Suplementos</h5>
+          <button 
+            onClick={handleAddExtra}
+            className="text-xs font-bold text-terracota hover:text-terracota/80 flex items-center gap-1 bg-terracota/10 px-3 py-1.5 rounded-lg transition-colors"
+          >
+            <span className="material-symbols-outlined text-[14px]">add</span>
+            Añadir Extra
+          </button>
+        </div>
+        
+        {extras.length === 0 ? (
+          <p className="text-xs text-on-surface-variant/60 italic">No hay suplementos configurados.</p>
+        ) : (
+          <div className="space-y-3">
+            {extras.map((extra, idx) => (
+              <div key={idx} className="flex flex-col sm:flex-row items-start sm:items-center gap-3 bg-white p-3 rounded-2xl border border-outline-variant/20 shadow-sm">
+                <input 
+                  type="text" 
+                  value={extra.name}
+                  onChange={(e) => handleUpdateExtra(idx, 'name', e.target.value)}
+                  placeholder="Ej: Temporada alta, Cachorro..."
+                  className="flex-1 bg-transparent border-none text-sm font-semibold focus:ring-0 p-1 w-full"
+                />
+                <div className="flex items-center gap-2 w-full sm:w-auto">
+                  <div className="relative w-24">
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={extra.price}
+                      onChange={(e) => handleUpdateExtra(idx, 'price', parseFloat(e.target.value))}
+                      className="w-full bg-surface-container-lowest border border-outline-variant/30 rounded-lg p-2 pl-6 font-semibold text-sm text-right"
+                    />
+                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm font-bold text-terracota">+</span>
+                  </div>
+                  <span className="text-sm font-bold text-on-surface-variant">€ /</span>
+                  <select
+                    value={extra.type}
+                    onChange={(e) => handleUpdateExtra(idx, 'type', e.target.value)}
+                    className="bg-surface-container-lowest border border-outline-variant/30 rounded-lg p-2 text-xs font-semibold"
+                  >
+                    <option value="per_unit">Por {unit}</option>
+                    <option value="per_pet_per_unit">Por mascota y {unit}</option>
+                    <option value="per_booking">Por reserva</option>
+                  </select>
+                  <button 
+                    onClick={() => handleRemoveExtra(idx)}
+                    className="w-8 h-8 flex items-center justify-center text-red-400 hover:bg-red-50 rounded-full transition-colors shrink-0 ml-1"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">delete</span>
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

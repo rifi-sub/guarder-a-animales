@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { Image, Upload, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 import { API_BASE } from '../config';
 
 const IMAGE_SECTIONS = [
@@ -61,7 +60,7 @@ export default function AdminImages() {
     <div className="bg-white rounded-3xl p-6 shadow-sm border border-outline-variant/30">
       <div className="flex items-center gap-3 mb-8">
         <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center text-primary">
-          <Image size={24} />
+          <span className="material-symbols-outlined text-2xl">image</span>
         </div>
         <div>
           <h2 className="text-2xl font-bold text-primary">Apariencia e Imágenes</h2>
@@ -71,7 +70,7 @@ export default function AdminImages() {
 
       {error && (
         <div className="mb-6 bg-red-50 text-red-700 p-4 rounded-xl flex items-center gap-3 text-sm font-medium">
-          <AlertCircle size={20} />
+          <span className="material-symbols-outlined">error</span>
           {error}
         </div>
       )}
@@ -100,18 +99,18 @@ export default function AdminImages() {
               <div className="text-sm font-medium">
                 {uploading === section.key ? (
                   <span className="text-primary flex items-center gap-2">
-                    <Loader2 size={16} className="animate-spin" /> Subiendo...
+                    <span className="material-symbols-outlined text-base animate-spin">sync</span> Subiendo...
                   </span>
                 ) : success === section.key ? (
                   <span className="text-emerald-600 flex items-center gap-2">
-                    <CheckCircle2 size={16} /> ¡Actualizada!
+                    <span className="material-symbols-outlined text-base">check_circle</span> ¡Actualizada!
                   </span>
                 ) : (
                   <span className="text-on-surface-variant">JPG o PNG</span>
                 )}
               </div>
               <label className="cursor-pointer bg-primary/10 hover:bg-primary/20 text-primary px-4 py-2 rounded-xl font-bold text-sm transition-colors flex items-center gap-2">
-                <Upload size={16} />
+                <span className="material-symbols-outlined text-base">upload</span>
                 Cambiar
                 <input 
                   type="file" 

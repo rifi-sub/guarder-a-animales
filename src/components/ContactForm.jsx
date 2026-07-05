@@ -383,46 +383,83 @@ export default function ContactForm() {
                   </select>
                 </div>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-on-surface-variant uppercase tracking-widest">Servicio</label>
-                  <select
-                    name="service"
-                    value={formData.service}
-                    onChange={handleChange}
-                    className="w-full bg-white border-outline-variant/30 rounded-2xl p-4 focus:ring-primary focus:border-primary text-on-surface-variant text-sm"
-                  >
-                    <option value="Alojamiento">Alojamiento</option>
-                    <option value="Guardería en mi hogar">Guardería en mi hogar</option>
-                    <option value="Cuidado a domicilio">Cuidado a domicilio</option>
-                    <option value="Paseos">Paseos</option>
-                  </select>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold text-on-surface-variant uppercase tracking-widest">Entrada</label>
-                    <input
-                      name="startDate"
-                      value={formData.startDate}
-                      onChange={handleChange}
-                      className="w-full bg-white border-outline-variant/30 rounded-2xl p-4 focus:ring-primary focus:border-primary text-sm text-on-surface-variant"
-                      type="date"
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold text-on-surface-variant uppercase tracking-widest">Salida</label>
-                    <input
-                      name="endDate"
-                      value={formData.endDate}
-                      onChange={handleChange}
-                      className="w-full bg-white border-outline-variant/30 rounded-2xl p-4 focus:ring-primary focus:border-primary text-sm text-on-surface-variant"
-                      type="date"
-                      required
-                    />
-                  </div>
+              
+              <div className="space-y-3">
+                <label className="text-xs font-bold text-on-surface-variant uppercase tracking-widest">Servicio y Tarifas</label>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  {[
+                    { val: "Alojamiento", desc: "Noche y día en casa", icon: "bed" },
+                    { val: "Guardería en mi hogar", desc: "Cuidados por el día", icon: "wb_sunny" },
+                    { val: "Cuidado a domicilio", desc: "Visitas al hogar", icon: "home_work" },
+                    { val: "Paseos", desc: "Paseos activos", icon: "directions_walk" }
+                  ].map(s => {
+                    const rateObj = rates.find(r => r.serviceName.toLowerCase() === s.val.toLowerCase());
+                    const priceText = rateObj ? `${rateObj.ratePerUnit}€ / ${rateObj.unitType}` : 'Consultar';
+                    return (
+                      <button
+                        key={s.val}
+                        type="button"
+                        onClick={() => setFormData(prev => ({ ...prev, service: s.val }))}
+                        className={`text-left p-4 rounded-[1.5rem] border transition-all ${
+                          formData.service === s.val 
+                            ? 'bg-primary/5 border-primary shadow-sm ring-1 ring-primary/20' 
+                            : 'bg-white border-outline-variant/30 hover:border-primary/50 hover:bg-surface-container-low'
+                        }`}
+                      >
+                        <div className="flex flex-col gap-2 mb-2">
+                          <span className={`material-symbols-outlined text-2xl ${formData.service === s.val ? 'text-primary' : 'text-on-surface-variant'}`}>{s.icon}</span>
+                          <span className={`font-bold text-sm leading-tight ${formData.service === s.val ? 'text-primary' : 'text-on-surface'}`}>{s.val}</span>
+                        </div>
+                        <div className="text-xs text-on-surface-variant mb-4 leading-snug">{s.desc}</div>
+                        <div className="text-sm font-black text-primary bg-white/60 inline-block px-3 py-1.5 rounded-lg border border-primary/10 shadow-sm">{priceText}</div>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-on-surface-variant uppercase tracking-widest">Entrada</label>
+                  <input
+                    name="startDate"
+                    value={formData.startDate}
+                    onChange={handleChange}
+                    className="w-full bg-white border-outline-variant/30 rounded-2xl p-4 focus:ring-primary focus:border-primary text-sm text-on-surface-variant"
+                    type="date"
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-on-surface-variant uppercase tracking-widest">Salida</label>
+                  <input
+                    name="endDate"
+                    value={formData.endDate}
+                    onChange={handleChange}
+                    className="w-full bg-white border-outline-variant/30 rounded-2xl p-4 focus:ring-primary focus:border-primary text-sm text-on-surface-variant"
+                    type="date"
+                    required
+                  />
+                </div>
+              </div>
+
+              {estimatedPrice !== null && (
+                <div className="p-5 bg-primary/5 border border-primary/20 rounded-[2rem] flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-inner">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center shrink-0 shadow-sm text-primary">
+                      <span className="material-symbols-outlined text-lg">receipt_long</span>
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-extrabold text-primary leading-tight">Resumen de tarifa</h4>
+                      <p className="text-xs text-on-surface-variant mt-1 font-medium">{formData.service} para las fechas elegidas.</p>
+                    </div>
+                  </div>
+                  <div className="sm:text-right bg-white px-5 py-3 rounded-2xl shadow-sm border border-outline-variant/10">
+                    <span className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest block mb-0.5">Precio Estimado</span>
+                    <span className="text-2xl font-black text-primary leading-none">{estimatedPrice}€</span>
+                  </div>
+                </div>
+              )}
               <div className="space-y-2">
                 <label className="text-xs font-bold text-on-surface-variant uppercase tracking-widest">Mensaje</label>
                 <textarea

@@ -45,6 +45,30 @@ export default function HomeSection() {
                 </div>
               ))}
             </div>
+            
+            <div className="mt-12 p-6 md:p-8 bg-surface-container-low border border-outline-variant/20 rounded-[2rem]">
+              <div className="flex items-center gap-3 mb-4">
+                <span className="material-symbols-outlined text-terracota">gpp_maybe</span>
+                <h3 className="font-bold text-lg text-primary">Convivencia responsable</h3>
+              </div>
+              <div className="space-y-4 text-sm text-on-surface-variant leading-relaxed">
+                <p>
+                  Convivo con dos gatos acostumbrados a compartir espacio con otros animales. Por ello,
+                  únicamente acepto mascotas compatibles con ellos para garantizar un ambiente tranquilo y
+                  seguro para todos.
+                </p>
+                <p>
+                  Considero que un buen cuidado empieza por respetar las rutinas de cada animal. Por eso sigo
+                  siempre las indicaciones de su familia respecto a alimentación, medicación, paseos, descanso y
+                  hábitos diarios, procurando que durante su estancia se sientan tranquilos, seguros y como en
+                  casa.
+                </p>
+                <p>
+                  En el caso de perros grandes, prefiero ofrecer paseos o cuidados a domicilio, ya que considero
+                  que es la opción que mejor se adapta a sus necesidades y bienestar.
+                </p>
+              </div>
+            </div>
           </div>
           <div className="order-1 lg:order-2 relative">
             <div className="rounded-3xl overflow-hidden aspect-square shadow-2xl">

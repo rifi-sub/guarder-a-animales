@@ -1,3 +1,5 @@
+import { API_BASE } from '../config';
+
 const traits = [
   { icon: 'psychology', title: 'Comprendo el comportamiento animal', text: 'Adapto el cuidado al carácter, las rutinas y las necesidades de cada mascota.' },
   { icon: 'medication', title: 'Administración de medicación', text: 'Experiencia siguiendo tratamientos y pautas veterinarias cuando es necesario.' },
@@ -15,15 +17,15 @@ export default function About() {
             <div className="rounded-[2.5rem] overflow-hidden shadow-2xl aspect-[4/5] border border-outline-variant/10">
               <img
                 className="w-full h-full object-cover"
-                src="https://lh3.googleusercontent.com/aida-public/AB6AXuDG2yL4-wLZ6pfmfLQeDfiXfKOXBF-Cr2Xh2NR3DSMCBQJIkbUGFR5zTx0LYjtl5hPNDbekU-QSV9H7MdAXo1-Imd6EEuJp56mX5oJkgBaj_jqnDw6u2ZQGH9Dr8NjaovGq2T7hT8zJTh2-aRV5SekYh1bUStMKmNzS_c5KJ_fewbFMcDYqj5T2fVnDy-HxSfeFqDzv_AtgGGIBPkfuEgjdWnTKe_SSWkKQXYDHi_U1Pui8zmUdFjCpcA"
+                src={`${API_BASE}/api/images/about`}
                 alt="Eris with cat"
               />
             </div>
             {/* Overlapping Badge at Bottom Left */}
             <div className="absolute -bottom-6 -left-6 bg-white py-4 px-6 rounded-[2rem] shadow-xl border border-outline-variant/10 text-center max-w-[200px]">
-              <p className="text-3xl font-extrabold text-primary leading-none">+15</p>
+              <p className="text-3xl font-extrabold text-primary leading-none">+20</p>
               <p className="text-[11px] text-on-surface-variant font-bold mt-2 leading-tight">
-                años conviviendo con animales
+                años de experiencia
               </p>
             </div>
           </div>

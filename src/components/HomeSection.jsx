@@ -21,6 +21,8 @@ const homeFeatures = [
   }
 ];
 
+import { API_BASE } from '../config';
+
 export default function HomeSection() {
   return (
     <section className="py-section-gap px-margin-mobile md:px-margin-desktop">
@@ -74,7 +76,7 @@ export default function HomeSection() {
             <div className="rounded-3xl overflow-hidden aspect-square shadow-2xl">
               <img
                 className="w-full h-full object-cover"
-                src="https://lh3.googleusercontent.com/aida-public/AB6AXuC2CvwTqSh5XqgdHtiI6eaoSw5o6de4uCiO97A0uD4DpMKtpGtC7G5vGeqQnJ7RBUvZ0bSn88utDZF3AF6pTgQ7fQvIcPU0_8fF7Hgb6Ia5JbdvQUG3mvrDlG-xNoUiTn0BeCzMWBTRO2sEtHji62oe5Ncpv1PHHK_BelZdrQepCPRuwXz6ZphJZReBy2fpETfc6ETTj-IT-fyWhYzbFsUTzwlZHAm-Ef4yAo8YtAvvRkEUM7odchdCrA"
+                src={`${API_BASE}/api/images/homesection`}
                 alt="Cozy pet care living room environment"
               />
             </div>

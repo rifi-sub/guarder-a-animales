@@ -6,6 +6,7 @@ import InvoicingPanel from './InvoicingPanel';
 import ClientsFidelityPanel from './ClientsFidelityPanel';
 import DailyCarePanel from './DailyCarePanel';
 import Calendar from './Calendar';
+import AdminImages from './AdminImages';
 
 const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? '' : 'https://alilyback.duckdns.org/eris';
 
@@ -1030,6 +1031,18 @@ export default function AdminPanel() {
             >
               <span className="material-symbols-outlined">payments</span>
               Configurar Tarifas
+            </button>
+
+            <button
+              onClick={() => setActiveTab('images')}
+              className={`w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl font-bold text-sm transition-all ${
+                activeTab === 'images'
+                  ? 'bg-primary text-white shadow-md'
+                  : 'text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface'
+              }`}
+            >
+              <span className="material-symbols-outlined">image</span>
+              Apariencia
             </button>
 
             <button
@@ -2060,7 +2073,7 @@ export default function AdminPanel() {
                     return (
                     <button
                       key={config.id}
-                      onClick={() => openDayModal(dayNum)}
+                      onClick={() => openDayModal(config.date)}
                       className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold border cursor-pointer hover:ring-2 hover:ring-primary transition-all ${
                       config.blockType ? 'bg-gray-100 border-gray-200 text-gray-700' : 'bg-primary/5 border-primary/10 text-primary'
                     }`}>
@@ -2374,12 +2387,19 @@ export default function AdminPanel() {
           </div>
         )}
 
-        {/* TAB 12: EMAIL */}
+        {/* TAB 12: IMÁGENES */}
+        {activeTab === 'images' && (
+            <div className="max-w-4xl mx-auto">
+                <AdminImages token={token} />
+            </div>
+        )}
+
+        {/* TAB 13: EMAIL */}
         {activeTab === 'email' && (
           <EmailSettingsPanel token={token} />
         )}
 
-        {/* TAB 13: CUPONES */}
+        {/* TAB 14: CUPONES */}
         {activeTab === 'coupons' && (
           <div className="animate-fade-in max-w-5xl">
             <div className="flex items-center justify-between mb-8">

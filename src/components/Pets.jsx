@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { API_BASE } from '../config';
 
 const pets = [
   {
@@ -11,7 +12,7 @@ const pets = [
       'Gracias a ella he aprendido aún más sobre el comportamiento felino, su sensibilidad y la importancia de respetar la personalidad y los ritmos de cada gato.',
       'Con las personas suele ser muy sociable y cariñosa. Con otros gatos necesita un periodo de adaptación y prefiere observar antes de relacionarse, por lo que siempre hago las presentaciones de forma tranquila y progresiva.'
     ],
-    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAJDjBt_B-H-asfzF9AC1s2AhthpAKA3EsJBarT_3dYEhjNOfH1cGApricJ-AzAuyeX8apRb3OIy95pOV_JfghkaWIrZrKxmZPAcVz2uCHRATRFGFv1rIyk09j33gbXZflDpCMvVkI1r5nkSIbs78GGRGH2IXjJjCz-xqaefhLHaRHRqghrT3F0BtLaTiP5Okcv4QORpAKyHp9McKT_q0mEW46yPRpwhM9xWakZUwQajAIgj-Ih_2OnKw',
+    image: `${API_BASE}/api/images/arya`,
     alt: 'Arya, Gata de 9 años'
   },
   {
@@ -24,7 +25,7 @@ const pets = [
       'Con las personas puede ser un poco tímido al principio debido a su pasado, pero es un gato muy noble que nunca haría daño a nadie. Incluso en el veterinario siempre me dicen lo bueno y tranquilo que es.',
       'Su carácter juguetón y sociable ayuda mucho a que otros gatos se sientan más cómodos durante las adaptaciones.'
     ],
-    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDwjIdDQK8DapqH_c7Q3i0h0pJMgeXBE6_TEGVyjELaVaJE5F2ZeRNSsYpQejpmodnuwYvNk8uu_rhsQM6uh6OD9qj2QYryvhXqp8W6cClMM2Jd2oLgtl7Ja6P0uP9rurO-2aZBUEeeb-l-pGV0sjWdTjoA2OkIuwkiX-dWRjdDfV5rn30HqpOIGQzaxbdALkU0mNkEZKGh7cmEkxk2Db1OG1Q2qZ0LS4n8ZRXgI5_9M-6B_TNhWZQRXA',
+    image: `${API_BASE}/api/images/mina`,
     alt: 'Mina, Gato de 2 años'
   }
 ];

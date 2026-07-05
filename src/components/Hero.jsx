@@ -1,3 +1,5 @@
+import { API_BASE } from '../config';
+
 export default function Hero() {
   const scrollToSection = (id) => {
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
@@ -45,7 +47,7 @@ export default function Hero() {
             <img
               className="w-full h-full object-cover"
               data-alt="A bright and airy living room designed for pet comfort..."
-              src="https://lh3.googleusercontent.com/aida-public/AB6AXuDvzAptZ8afLHCF2_Q1Fxr1HwXZL-75475xLFdUvr7MtHcmbESaxz99qH98KAL22yQgJf5xLumD01hDY4lqLFOH656wOBf-PMuExWRiVQGugmwsIrpS44VIbHrAiCHCboColMsyY3ONRxjJEzvWM99CnBGcV3JIOhrwAVqcE0w9pfF8LrnIJRM-I3UgmZwhCW7fo1eC0ua2-sfvb7lt5G5EnrxKxBRErp5UbnRc-jqdRmeknEbVyMsYdA"
+              src={`${API_BASE}/api/images/hero`}
               alt="Eris Pet Care Living Room"
             />
             {/* Floating Badges */}

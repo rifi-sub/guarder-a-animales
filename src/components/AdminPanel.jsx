@@ -7,6 +7,7 @@ import ClientsFidelityPanel from './ClientsFidelityPanel';
 import DailyCarePanel from './DailyCarePanel';
 import Calendar from './Calendar';
 import AdminImages from './AdminImages';
+import AdminSettings from './AdminSettings';
 
 const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? '' : 'https://alilyback.duckdns.org/eris';
 
@@ -286,6 +287,36 @@ export default function AdminPanel() {
       alert('Error de conexión');
     }
   };
+  const handleManualPayment = async (id, currentPaid, price) => {
+    const amountStr = prompt(`Introduce la cantidad recibida manualmente (Ej. 20).\nPrecio total: ${price}€\nYa pagado: ${currentPaid || 0}€`);
+    if (!amountStr) return;
+    
+    const amount = parseFloat(amountStr);
+    if (isNaN(amount) || amount <= 0) return alert('Cantidad inválida');
+    
+    try {
+      // Re-using the patch endpoint to just add to paidAmount
+      const res = await fetch(`${API_BASE}/api/admin/bookings/${id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ manualPayment: amount })
+      });
+      
+      if (res.ok) {
+        alert('Pago manual registrado correctamente.');
+        fetchData();
+      } else {
+        const data = await res.json();
+        alert(data.error || 'Error al registrar pago');
+      }
+    } catch (err) {
+      alert('Error de conexión');
+    }
+  };
+
 
   // --- ACCIONES DE CAPACIDAD (MODAL) ---
   const openDayModal = (dateStr) => {
@@ -516,20 +547,50 @@ export default function AdminPanel() {
 
   // --- ACCIONES DE RESERVAS ---
 
-  const handleAcceptBooking = async (id) => {
+  const confirmAcceptBooking = async () => {
+    if (!acceptingBooking) return;
     try {
-      const res = await fetch(`${API_BASE}/api/admin/bookings/${id}/accept`, {
+      const res = await fetch(`${API_BASE}/api/admin/bookings/${acceptingBooking.id}/accept`, {
         method: 'POST',
         headers: {
+          'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
-        }
+        },
+        body: JSON.stringify({ paymentPercentage: acceptPaymentPercentage })
       });
       if (res.ok) {
-        alert('Reserva aceptada. Se ha creado/vinculado la ficha del cliente y su mascota en el CRM, y se han generado las tareas diarias automáticas.');
+        alert('Reserva aceptada. Se generó el enlace de pago (si aplica) y se notificó al cliente.');
+        setAcceptingBooking(null);
         fetchData();
       } else {
         const data = await res.json();
         alert(data.error || 'Error al procesar reserva');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error de conexión');
+    }
+  };
+
+  const confirmAlternative = async () => {
+    if (!alternativeBooking || !alternativeMessage) return;
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/bookings/${alternativeBooking.id}/alternative`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ customMessage: alternativeMessage })
+      });
+      if (res.ok) {
+        alert('Contraoferta enviada correctamente.');
+        setAlternativeBooking(null);
+        setAlternativeMessage('');
+        fetchData();
+      } else {
+        const data = await res.json();
+        alert(data.error || 'Error al enviar alternativa');
       }
     } catch (err) {
       console.error(err);
@@ -1309,11 +1370,18 @@ export default function AdminPanel() {
                         {booking.status === 'PENDIENTE' ? (
                           <>
                             <button
-                              onClick={() => handleAcceptBooking(booking.id)}
+                              onClick={() => setAcceptingBooking(booking)}
                               className="w-full bg-emerald-600 text-white text-xs font-bold px-4 py-2.5 rounded-xl hover:bg-emerald-700 transition-colors flex items-center justify-center gap-1.5"
                             >
                               <span className="material-symbols-outlined text-sm">check</span>
                               Aceptar y Guardar CRM
+                            </button>
+                            <button
+                              onClick={() => setAlternativeBooking(booking)}
+                              className="w-full bg-amber-500 text-white text-xs font-bold px-4 py-2.5 rounded-xl hover:bg-amber-600 transition-colors flex items-center justify-center gap-1.5"
+                            >
+                              <span className="material-symbols-outlined text-sm">edit_calendar</span>
+                              Contraoferta
                             </button>
                             <button
                               onClick={() => handleRejectBooking(booking.id)}
@@ -1326,6 +1394,16 @@ export default function AdminPanel() {
                         ) : (
                           <>
                             {editingBookingId !== booking.id && (
+                              
+                              {['ACEPTADA', 'CONTRAOFERTA'].includes(booking.status) && (booking.paidAmount || 0) < (booking.price || 0) && (
+                                <button
+                                  onClick={() => handleManualPayment(booking.id, booking.paidAmount, booking.price)}
+                                  className="w-full bg-surface-variant/50 text-on-surface border border-outline-variant/30 text-xs font-bold px-4 py-2 rounded-xl hover:bg-surface-variant transition-colors flex items-center justify-center gap-1.5 mb-2"
+                                >
+                                  <span className="material-symbols-outlined text-sm">payments</span>
+                                  Pago Manual
+                                </button>
+                              )}
                               <button
                                 onClick={() => startEditingBooking(booking)}
                                 className="w-full bg-primary/10 text-primary border border-primary/20 text-xs font-bold px-4 py-2.5 rounded-xl hover:bg-primary/20 transition-colors flex items-center justify-center gap-1.5"

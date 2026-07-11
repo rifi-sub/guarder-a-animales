@@ -108,6 +108,14 @@ export default function AdminPanel() {
   const [editingPaymentStatus, setEditingPaymentStatus] = useState('PENDIENTE');
   const [editingPaymentMethod, setEditingPaymentMethod] = useState('');
 
+  // Estados para aceptar reserva con anticipo
+  const [acceptingBooking, setAcceptingBooking] = useState(null);
+  const [acceptPaymentPercentage, setAcceptPaymentPercentage] = useState(50);
+  
+  // Estados para contraoferta
+  const [alternativeBooking, setAlternativeBooking] = useState(null);
+  const [alternativeMessage, setAlternativeMessage] = useState('');
+
   // Fase 2: Pestañas de Cliente, Modos y Buscador
   const [selectedClientTab, setSelectedClientTab] = useState('resumen');
   const [workMode, setWorkMode] = useState('RECEPTION'); // RECEPTION o CARE

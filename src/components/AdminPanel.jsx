@@ -1394,23 +1394,24 @@ export default function AdminPanel() {
                         ) : (
                           <>
                             {editingBookingId !== booking.id && (
-                              
-                              {['ACEPTADA', 'CONTRAOFERTA'].includes(booking.status) && (booking.paidAmount || 0) < (booking.price || 0) && (
+                              <>
+                                {['ACEPTADA', 'CONTRAOFERTA'].includes(booking.status) && (booking.paidAmount || 0) < (booking.price || 0) && (
+                                  <button
+                                    onClick={() => handleManualPayment(booking.id, booking.paidAmount, booking.price)}
+                                    className="w-full bg-surface-variant/50 text-on-surface border border-outline-variant/30 text-xs font-bold px-4 py-2 rounded-xl hover:bg-surface-variant transition-colors flex items-center justify-center gap-1.5 mb-2"
+                                  >
+                                    <span className="material-symbols-outlined text-sm">payments</span>
+                                    Pago Manual
+                                  </button>
+                                )}
                                 <button
-                                  onClick={() => handleManualPayment(booking.id, booking.paidAmount, booking.price)}
-                                  className="w-full bg-surface-variant/50 text-on-surface border border-outline-variant/30 text-xs font-bold px-4 py-2 rounded-xl hover:bg-surface-variant transition-colors flex items-center justify-center gap-1.5 mb-2"
+                                  onClick={() => startEditingBooking(booking)}
+                                  className="w-full bg-primary/10 text-primary border border-primary/20 text-xs font-bold px-4 py-2.5 rounded-xl hover:bg-primary/20 transition-colors flex items-center justify-center gap-1.5"
                                 >
                                   <span className="material-symbols-outlined text-sm">payments</span>
-                                  Pago Manual
+                                  Editar Pago
                                 </button>
-                              )}
-                              <button
-                                onClick={() => startEditingBooking(booking)}
-                                className="w-full bg-primary/10 text-primary border border-primary/20 text-xs font-bold px-4 py-2.5 rounded-xl hover:bg-primary/20 transition-colors flex items-center justify-center gap-1.5"
-                              >
-                                <span className="material-symbols-outlined text-sm">payments</span>
-                                Editar Pago
-                              </button>
+                              </>
                             )}
                             {booking.phone && (
                               <a

@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from "react";
-import { Loader2 } from "lucide-react";
 import { API_BASE } from "../config";
 
 const AdminSettings = ({ token }) => {
@@ -51,7 +50,7 @@ const AdminSettings = ({ token }) => {
   if (loading) {
     return (
       <div className="flex justify-center p-12">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <span className="material-symbols-outlined text-primary text-4xl animate-spin">refresh</span>
       </div>
     );
   }

@@ -12,6 +12,7 @@ import ContactForm from './components/ContactForm'
 import Footer from './components/Footer'
 import AdminPanel from './components/AdminPanel'
 import ClientPortal from './components/ClientPortal'
+import Terms from './components/Terms'
 
 function App() {
   const [currentPath, setCurrentPath] = useState(window.location.pathname);
@@ -34,6 +35,16 @@ function App() {
   
   if (currentPath === '/portal') {
     return <ClientPortal />;
+  }
+
+  if (currentPath === '/terminos') {
+    return (
+      <>
+        <Navbar />
+        <Terms />
+        <Footer />
+      </>
+    );
   }
 
   return (

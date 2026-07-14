@@ -185,6 +185,8 @@ export default function ContactForm() {
     try {
       const payload = {
         ...formData,
+        startDate: formData.startDate || new Date().toISOString().split('T')[0],
+        endDate: formData.endDate || new Date().toISOString().split('T')[0],
         service: formData.serviceDbName, // Send the real DB name
         price: estimatedPrice,
         discount: discountAmount,

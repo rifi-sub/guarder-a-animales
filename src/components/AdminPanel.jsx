@@ -121,6 +121,7 @@ export default function AdminPanel() {
   const [workMode, setWorkMode] = useState('RECEPTION'); // RECEPTION o CARE
   const [globalSearch, setGlobalSearch] = useState('');
   const [bookingViewType, setBookingViewType] = useState('list'); // list o kanban
+  const [showArchivedBookings, setShowArchivedBookings] = useState(false);
 
   const startTour = () => {
     const driverObj = driver({
@@ -157,7 +158,7 @@ export default function AdminPanel() {
     if (token) {
       fetchData();
     }
-  }, [token, activeTab, selectedDate]);
+  }, [token, activeTab, selectedDate, showArchivedBookings]);
 
   const fetchData = async () => {
     try {
@@ -165,7 +166,7 @@ export default function AdminPanel() {
 
       // 1. Reservas
       if (activeTab === 'bookings' || activeTab === 'planner') {
-        const res = await fetch(`${API_BASE}/api/admin/bookings`, { headers });
+        const res = await fetch(`${API_BASE}/api/admin/bookings${showArchivedBookings ? '?archived=true' : ''}`, { headers });
         if (res.ok) setBookings(await res.json());
         else if (res.status === 401 || res.status === 403) handleLogout();
       }
@@ -629,6 +630,24 @@ export default function AdminPanel() {
         headers: {
           'Authorization': `Bearer ${token}`
         }
+      });
+      if (res.ok) {
+        fetchData();
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleArchiveBooking = async (id, archive = true) => {
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/bookings/${id}/archive`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ archived: archive })
       });
       if (res.ok) {
         fetchData();
@@ -1209,6 +1228,19 @@ export default function AdminPanel() {
                   </button>
                 </div>
                 <button
+                  type="button"
+                  onClick={() => { setShowArchivedBookings(v => !v); }}
+                  className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold border transition-all ${
+                    showArchivedBookings
+                      ? 'bg-surface-variant text-on-surface border-outline-variant'
+                      : 'border-outline-variant/30 text-on-surface-variant hover:bg-surface-container-low'
+                  }`}
+                  title={showArchivedBookings ? 'Ver reservas activas' : 'Ver historial archivado'}
+                >
+                  <span className="material-symbols-outlined text-sm">{showArchivedBookings ? 'inbox' : 'archive'}</span>
+                  {showArchivedBookings ? 'Activas' : 'Historial'}
+                </button>
+                <button
                   onClick={fetchData}
                   className="w-10 h-10 rounded-full border border-outline-variant/30 flex items-center justify-center hover:bg-white transition-colors"
                   title="Actualizar datos"
@@ -1446,6 +1478,25 @@ export default function AdminPanel() {
                               >
                                 <span className="material-symbols-outlined text-sm">receipt_long</span>
                                 Factura
+                              </button>
+                            )}
+                            {!showArchivedBookings ? (
+                              <button
+                                onClick={() => handleArchiveBooking(booking.id, true)}
+                                className="w-full border border-outline-variant/30 text-on-surface-variant text-xs font-bold px-4 py-2.5 rounded-xl hover:bg-surface-container-low transition-colors flex items-center justify-center gap-1.5"
+                                title="Archivar esta reserva para sacarla del listado activo"
+                              >
+                                <span className="material-symbols-outlined text-sm">archive</span>
+                                Archivar
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => handleArchiveBooking(booking.id, false)}
+                                className="w-full border border-primary/30 text-primary text-xs font-bold px-4 py-2.5 rounded-xl hover:bg-primary/5 transition-colors flex items-center justify-center gap-1.5"
+                                title="Restaurar reserva al listado activo"
+                              >
+                                <span className="material-symbols-outlined text-sm">unarchive</span>
+                                Restaurar
                               </button>
                             )}
                           </>

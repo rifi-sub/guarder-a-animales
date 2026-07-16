@@ -1,14 +1,14 @@
 import { SectionMedia } from './SectionMedia';
-
-const traits = [
-  { icon: 'psychology',    title: 'Comprendo el comportamiento animal',  text: 'Adapto el cuidado al carácter, las rutinas y las necesidades de cada mascota.' },
-  { icon: 'medication',    title: 'Administración de medicación',        text: 'Experiencia siguiendo tratamientos y pautas veterinarias cuando es necesario.' },
-  { icon: 'spa',           title: 'Entorno limpio y enriquecido',        text: 'Espacios preparados para favorecer el bienestar físico y emocional de las mascotas.' },
-  { icon: 'photo_camera',  title: 'Seguimiento durante la estancia',     text: 'Recibirás fotos y vídeos con frecuencia para que puedas estar tranquilo.' },
-  { icon: 'stars',         title: 'Atención personalizada',              text: 'Acepto pocas reservas para dedicar tiempo y atención individual a cada animal.' },
-];
+import { usePageTexts } from '../hooks/usePageTexts';
 
 export default function About() {
+  const { texts, loading } = usePageTexts();
+  const aboutTexts = texts.about;
+
+  if (loading) {
+    return <div className="py-section-gap px-margin-mobile md:px-margin-desktop bg-surface-container-low min-h-[60vh] animate-pulse" />;
+  }
+
   return (
     <section className="py-section-gap px-margin-mobile md:px-margin-desktop bg-surface-container-low" id="sobre-mi">
       <div className="max-w-container-max-width mx-auto">
@@ -24,23 +24,23 @@ export default function About() {
               />
             </div>
             <div className="absolute -bottom-6 -left-6 bg-white py-4 px-6 rounded-[2rem] shadow-xl border border-outline-variant/10 text-center max-w-[200px]">
-              <p className="text-3xl font-extrabold text-primary leading-none">+20</p>
-              <p className="text-[11px] text-on-surface-variant font-bold mt-2 leading-tight">años de experiencia</p>
+              <p className="text-3xl font-extrabold text-primary leading-none">{aboutTexts.experienceYears}</p>
+              <p className="text-[11px] text-on-surface-variant font-bold mt-2 leading-tight">{aboutTexts.experienceText}</p>
             </div>
           </div>
 
           <div className="lg:col-span-7">
-            <span className="text-xs font-extrabold uppercase tracking-widest text-terracota mb-4 block">SOBRE MÍ</span>
+            <span className="text-xs font-extrabold uppercase tracking-widest text-terracota mb-4 block">{aboutTexts.badge}</span>
             <h2 className="font-display-lg text-headline-md md:text-5xl text-primary leading-tight mb-8">
-              Hola, soy Eris. Cuido de tu mascota como si fuera mía.
+              {aboutTexts.title}
             </h2>
             <div className="text-body-lg text-on-surface-variant mb-12 leading-relaxed font-medium space-y-4">
-              <p>Desde que tengo memoria he vivido rodeada de animales y, con el tiempo, he aprendido a observarlos, entender su lenguaje y respetar las necesidades de cada uno. Para mí nunca han sido solo mascotas: siempre han formado parte de la familia.</p>
-              <p>Trabajo desde casa, lo que me permite pasar gran parte del día acompañando a las mascotas que cuido y ofrecerles una atención cercana, tranquila y adaptada a sus necesidades.</p>
-              <p>No soy una empresa ni una residencia. Soy una persona que abre las puertas de su hogar a un número reducido de animales porque creo que la calidad del cuidado siempre debe estar por encima de la cantidad.</p>
+              {aboutTexts.paragraphs.map((p, i) => (
+                <p key={i}>{p}</p>
+              ))}
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {traits.map((trait, index) => (
+              {aboutTexts.traits.map((trait, index) => (
                 <div key={index} className="flex flex-col gap-2 p-5 bg-white/70 backdrop-blur-sm rounded-[2rem] border border-outline-variant/10 shadow-sm hover:shadow-md transition-shadow">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">

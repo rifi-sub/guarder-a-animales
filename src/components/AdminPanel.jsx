@@ -8,6 +8,7 @@ import DailyCarePanel from './DailyCarePanel';
 import Calendar from './Calendar';
 import AdminImages from './AdminImages';
 import AdminSettings from './AdminSettings';
+import AdminTexts from './AdminTexts';
 
 const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? '' : 'https://alilyback.duckdns.org/eris';
 
@@ -1131,6 +1132,18 @@ export default function AdminPanel() {
             >
               <span className="material-symbols-outlined">image</span>
               Apariencia
+            </button>
+
+            <button
+              onClick={() => setActiveTab('texts')}
+              className={`w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl font-bold text-sm transition-all ${
+                activeTab === 'texts'
+                  ? 'bg-primary text-white shadow-md'
+                  : 'text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface'
+              }`}
+            >
+              <span className="material-symbols-outlined">edit_document</span>
+              Textos de la Web
             </button>
 
             <button
@@ -2529,6 +2542,13 @@ export default function AdminPanel() {
         {activeTab === 'images' && (
             <div className="max-w-4xl mx-auto">
                 <AdminImages token={token} />
+            </div>
+        )}
+
+        {/* TAB 12.5: TEXTOS */}
+        {activeTab === 'texts' && (
+            <div className="max-w-4xl mx-auto">
+                <AdminTexts />
             </div>
         )}
 

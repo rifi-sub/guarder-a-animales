@@ -1,35 +1,7 @@
 import { useState } from 'react';
 import { SectionMedia } from './SectionMedia';
 import { API_BASE } from '../config';
-
-const petData = [
-  {
-    key: 'arya',
-    name: 'Arya',
-    typeInfo: 'Gata · 9 años',
-    description: 'Mi compañera desde que era un bebé. Crecimos juntas y tenemos un vínculo muy especial. Es una gata inteligente, tranquila y muy cariñosa con las personas. Con otros gatos prefiere mantener su espacio al principio, por lo que siempre realizo las adaptaciones con calma y respetando los tiempos de cada uno.',
-    fullDescription: [
-      'Mi gata es mi compañera desde que era muy pequeña, literalmente desde que cabía en la palma de mi mano. Crecimos juntas y es una parte muy importante de mi vida.',
-      'Es increíblemente inteligente, cariñosa y muy obediente; siempre me sigue a todas partes y tenemos un vínculo muy especial. Incluso salimos a pasear juntas y muchas veces la gente se sorprende de lo conectadas que estamos.',
-      'Gracias a ella he aprendido aún más sobre el comportamiento felino, su sensibilidad y la importancia de respetar la personalidad y los ritmos de cada gato.',
-      'Con las personas suele ser muy sociable y cariñosa. Con otros gatos necesita un periodo de adaptación y prefiere observar antes de relacionarse, por lo que siempre hago las presentaciones de forma tranquila y progresiva.',
-    ],
-    alt: 'Arya, Gata de 9 años',
-  },
-  {
-    key: 'mina',
-    name: 'Mina',
-    typeInfo: 'Gato · 2 años',
-    description: 'Lo rescaté cuando era un cachorro y desde entonces se ha convertido en un gato increíblemente dulce. Es muy juguetón, curioso y disfruta mucho de la compañía de otros gatos. Con las personas puede mostrarse tímido al principio, aunque enseguida saca su lado más cariñoso.',
-    fullDescription: [
-      'Mina tiene dos años y es mi pequeño rechonchito. Lo rescaté de una casa donde no lo estaban cuidando bien y desde entonces se ha convertido en un gato increíblemente dulce.',
-      'Es muy bueno, manso y sociable con otros animales; de hecho, le encanta jugar y seguramente sería el que más disfrutaría si vienen otros gatitos de visita.',
-      'Con las personas puede ser un poco tímido al principio debido a su pasado, pero es un gato muy noble que nunca haría daño a nadie. Incluso en el veterinario siempre me dicen lo bueno y tranquilo que es.',
-      'Su carácter juguetón y sociable ayuda mucho a que otros gatos se sientan más cómodos durante las adaptaciones.',
-    ],
-    alt: 'Mina, Gato de 2 años',
-  },
-];
+import { usePageTexts } from '../hooks/usePageTexts';
 
 function PetModal({ pet, onClose }) {
   return (
@@ -43,7 +15,6 @@ function PetModal({ pet, onClose }) {
           <span className="material-symbols-outlined">close</span>
         </button>
         <div className="h-48 md:h-64 relative shrink-0">
-          {/* Modal header always shows single image for simplicity */}
           <img
             src={`${API_BASE}/api/images/${pet.key}`}
             alt={pet.alt}
@@ -65,21 +36,27 @@ function PetModal({ pet, onClose }) {
 
 export default function Pets() {
   const [activePet, setActivePet] = useState(null);
+  const { texts, loading } = usePageTexts();
+  const petsTexts = texts.pets;
+
+  if (loading) {
+    return <div className="py-section-gap px-margin-mobile md:px-margin-desktop min-h-[50vh] animate-pulse bg-surface-container" />;
+  }
 
   return (
     <>
       <section className="py-section-gap px-margin-mobile md:px-margin-desktop">
         <div className="max-w-container-max-width mx-auto text-center mb-16">
-          <span className="text-xs font-bold uppercase tracking-widest text-terracota mb-4 block">MIS MASCOTAS</span>
+          <span className="text-xs font-bold uppercase tracking-widest text-terracota mb-4 block">{petsTexts.tag}</span>
           <h2 className="font-display-lg text-headline-md md:text-5xl text-primary leading-tight mb-6">
-            La familia peluda que hace de esta casa un hogar
+            {petsTexts.title}
           </h2>
           <p className="text-body-lg text-on-surface-variant max-w-3xl mx-auto leading-relaxed">
-            Arya y Mina forman parte de mi familia. Conviven conmigo cada día y son una parte muy importante de mi vida. Como la tranquilidad de todos es mi prioridad, únicamente acepto mascotas compatibles con gatos y realizo las presentaciones de forma progresiva, respetando siempre el ritmo y la personalidad de cada animal.
+            {petsTexts.description}
           </p>
         </div>
         <div className="max-w-container-max-width mx-auto grid grid-cols-1 md:grid-cols-2 gap-element-gap">
-          {petData.map((pet) => (
+          {petsTexts.petData.map((pet) => (
             <div key={pet.key} className="group flex flex-col h-full bg-surface-container-low rounded-[2rem] p-6 border border-outline-variant/10 shadow-sm hover:shadow-md transition-all">
               <div className="rounded-2xl overflow-hidden aspect-video shadow-sm mb-6 relative">
                 <SectionMedia

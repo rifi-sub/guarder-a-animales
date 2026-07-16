@@ -1,11 +1,11 @@
-import { API_BASE } from '../config';
+import { SectionMedia } from './SectionMedia';
 
 const traits = [
-  { icon: 'psychology', title: 'Comprendo el comportamiento animal', text: 'Adapto el cuidado al carácter, las rutinas y las necesidades de cada mascota.' },
-  { icon: 'medication', title: 'Administración de medicación', text: 'Experiencia siguiendo tratamientos y pautas veterinarias cuando es necesario.' },
-  { icon: 'spa', title: 'Entorno limpio y enriquecido', text: 'Espacios preparados para favorecer el bienestar físico y emocional de las mascotas.' },
-  { icon: 'photo_camera', title: 'Seguimiento durante la estancia', text: 'Recibirás fotos y vídeos con frecuencia para que puedas estar tranquilo.' },
-  { icon: 'stars', title: 'Atención personalizada', text: 'Acepto pocas reservas para dedicar tiempo y atención individual a cada animal.' }
+  { icon: 'psychology',    title: 'Comprendo el comportamiento animal',  text: 'Adapto el cuidado al carácter, las rutinas y las necesidades de cada mascota.' },
+  { icon: 'medication',    title: 'Administración de medicación',        text: 'Experiencia siguiendo tratamientos y pautas veterinarias cuando es necesario.' },
+  { icon: 'spa',           title: 'Entorno limpio y enriquecido',        text: 'Espacios preparados para favorecer el bienestar físico y emocional de las mascotas.' },
+  { icon: 'photo_camera',  title: 'Seguimiento durante la estancia',     text: 'Recibirás fotos y vídeos con frecuencia para que puedas estar tranquilo.' },
+  { icon: 'stars',         title: 'Atención personalizada',              text: 'Acepto pocas reservas para dedicar tiempo y atención individual a cada animal.' },
 ];
 
 export default function About() {
@@ -15,41 +15,29 @@ export default function About() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-16 lg:gap-20 items-center">
           <div className="lg:col-span-5 relative">
             <div className="rounded-[2.5rem] overflow-hidden shadow-2xl aspect-[4/5] border border-outline-variant/10">
-              <img
-                className="w-full h-full object-cover"
-                src={`${API_BASE}/api/images/about`}
+              <SectionMedia
+                sectionKey="about"
                 alt="Eris with cat"
+                className="w-full h-full object-cover"
+                containerClassName="w-full h-full"
+                gridClassName="grid grid-cols-2 gap-1 h-full"
               />
             </div>
-            {/* Overlapping Badge at Bottom Left */}
             <div className="absolute -bottom-6 -left-6 bg-white py-4 px-6 rounded-[2rem] shadow-xl border border-outline-variant/10 text-center max-w-[200px]">
               <p className="text-3xl font-extrabold text-primary leading-none">+20</p>
-              <p className="text-[11px] text-on-surface-variant font-bold mt-2 leading-tight">
-                años de experiencia
-              </p>
+              <p className="text-[11px] text-on-surface-variant font-bold mt-2 leading-tight">años de experiencia</p>
             </div>
           </div>
+
           <div className="lg:col-span-7">
             <span className="text-xs font-extrabold uppercase tracking-widest text-terracota mb-4 block">SOBRE MÍ</span>
             <h2 className="font-display-lg text-headline-md md:text-5xl text-primary leading-tight mb-8">
               Hola, soy Eris. Cuido de tu mascota como si fuera mía.
             </h2>
             <div className="text-body-lg text-on-surface-variant mb-12 leading-relaxed font-medium space-y-4">
-              <p>
-                Desde que tengo memoria he vivido rodeada de animales y, con el tiempo, he aprendido a
-                observarlos, entender su lenguaje y respetar las necesidades de cada uno. Para mí nunca
-                han sido solo mascotas: siempre han formado parte de la familia.
-              </p>
-              <p>
-                Trabajo desde casa, lo que me permite pasar gran parte del día acompañando a las
-                mascotas que cuido y ofrecerles una atención cercana, tranquila y adaptada a sus
-                necesidades.
-              </p>
-              <p>
-                No soy una empresa ni una residencia. Soy una persona que abre las puertas de su hogar
-                a un número reducido de animales porque creo que la calidad del cuidado siempre debe
-                estar por encima de la cantidad.
-              </p>
+              <p>Desde que tengo memoria he vivido rodeada de animales y, con el tiempo, he aprendido a observarlos, entender su lenguaje y respetar las necesidades de cada uno. Para mí nunca han sido solo mascotas: siempre han formado parte de la familia.</p>
+              <p>Trabajo desde casa, lo que me permite pasar gran parte del día acompañando a las mascotas que cuido y ofrecerles una atención cercana, tranquila y adaptada a sus necesidades.</p>
+              <p>No soy una empresa ni una residencia. Soy una persona que abre las puertas de su hogar a un número reducido de animales porque creo que la calidad del cuidado siempre debe estar por encima de la cantidad.</p>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {traits.map((trait, index) => (

@@ -1,31 +1,9 @@
-import { useState, useEffect } from 'react';
-import { API_BASE } from '../config';
+import { SectionMedia } from './SectionMedia';
 
 export default function Hero() {
-  const [mediaItems, setMediaItems] = useState([]);
-  const [current, setCurrent] = useState(0);
-  const [fade, setFade] = useState(true);
-
-  useEffect(() => {
-    fetch(`${API_BASE}/api/media/hero`)
-      .then(r => r.ok ? r.json() : [])
-      .then(data => setMediaItems(data))
-      .catch(() => {});
-  }, []);
-
   const scrollToSection = (id) => {
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
   };
-
-  const goTo = (idx) => {
-    setFade(false);
-    setTimeout(() => { setCurrent(idx); setFade(true); }, 150);
-  };
-
-  const currentItem = mediaItems[current];
-  const mediaUrl = currentItem
-    ? `${API_BASE}/api/media/file/${currentItem.filename}`
-    : `${API_BASE}/api/images/hero`;
 
   return (
     <section className="pt-40 pb-20 px-margin-mobile md:px-margin-desktop max-w-container-max-width mx-auto" id="inicio">
@@ -66,39 +44,14 @@ export default function Hero() {
         </div>
 
         <div className="relative">
-          <div className="hero-image-mask aspect-[4/5] bg-surface-container shadow-2xl relative overflow-hidden">
-            {/* Media */}
-            <div className={`w-full h-full transition-opacity duration-300 ${fade ? 'opacity-100' : 'opacity-0'}`}>
-              {currentItem?.type === 'video' ? (
-                <video key={mediaUrl} src={mediaUrl} autoPlay muted loop playsInline className="w-full h-full object-cover" />
-              ) : (
-                <img key={mediaUrl} className="w-full h-full object-cover" src={mediaUrl} alt="Eris Pet Care Living Room" />
-              )}
-            </div>
-
-            {/* Carousel controls */}
-            {mediaItems.length > 1 && (
-              <>
-                <button
-                  onClick={() => goTo((current - 1 + mediaItems.length) % mediaItems.length)}
-                  className="absolute left-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/30 hover:bg-black/50 backdrop-blur-sm text-white flex items-center justify-center z-10"
-                >
-                  <span className="material-symbols-outlined text-sm">chevron_left</span>
-                </button>
-                <button
-                  onClick={() => goTo((current + 1) % mediaItems.length)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/30 hover:bg-black/50 backdrop-blur-sm text-white flex items-center justify-center z-10"
-                >
-                  <span className="material-symbols-outlined text-sm">chevron_right</span>
-                </button>
-                <div className="absolute bottom-20 left-1/2 -translate-x-1/2 flex gap-1.5 z-10">
-                  {mediaItems.map((_, i) => (
-                    <button key={i} onClick={() => goTo(i)} className={`h-1.5 rounded-full transition-all ${i === current ? 'bg-white w-4' : 'bg-white/50 w-1.5'}`} />
-                  ))}
-                </div>
-              </>
-            )}
-
+          <div className="hero-image-mask aspect-[4/5] bg-surface-container shadow-2xl relative overflow-hidden rounded-3xl">
+            <SectionMedia
+              sectionKey="hero"
+              alt="Eris Pet Care"
+              className="w-full h-full object-cover"
+              containerClassName="w-full h-full"
+              gridClassName="grid grid-cols-1 gap-2 h-full"
+            />
             {/* Floating Badges */}
             <div className="absolute top-6 left-6 bg-white/90 backdrop-blur p-3 rounded-2xl shadow-xl animate-bounce z-10" style={{ animationDuration: '3s' }}>
               <span className="material-symbols-outlined text-primary">eco</span>

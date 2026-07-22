@@ -33,22 +33,16 @@ export default function Navbar() {
         <a className="text-on-surface-variant hover:text-primary transition-colors" href="#servicios">Servicios</a>
         <a className="text-on-surface-variant hover:text-primary transition-colors" href="#disponibilidad">Disponibilidad</a>
         <a className="text-on-surface-variant hover:text-primary transition-colors" href="#reseñas">Reseñas</a>
-        <a className="text-on-surface-variant hover:text-primary transition-colors" href="#contacto">Contacto</a>
+        <a className="text-on-surface-variant hover:text-primary transition-colors" href="#reserva">Contacto</a>
       </div>
       <div className="flex items-center gap-4">
         <a 
           href="/portal"
-          className="hidden md:flex items-center gap-1.5 text-xs font-bold text-on-surface-variant hover:text-primary transition-colors"
+          className="hidden md:flex items-center gap-2 px-5 py-2.5 bg-primary/10 text-primary rounded-full font-bold hover:bg-primary hover:text-white transition-all shadow-sm"
         >
-          <span className="material-symbols-outlined text-[16px]">account_circle</span>
+          <span className="material-symbols-outlined text-[18px]">account_circle</span>
           Área Cliente
         </a>
-        <button
-          onClick={() => document.getElementById('contacto')?.scrollIntoView({ behavior: 'smooth' })}
-          className="bg-terracota text-white px-6 py-2.5 rounded-full font-bold hover:scale-95 transition-transform"
-        >
-          Reservar guardería
-        </button>
       </div>
     </nav>
   );

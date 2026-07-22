@@ -29,7 +29,7 @@ export default function Hero() {
           </p>
           <div className="flex flex-wrap gap-4 pt-4">
             <button
-              onClick={() => scrollToSection('contacto')}
+              onClick={() => scrollToSection('reserva')}
               className="bg-terracota text-white px-8 py-4 rounded-2xl font-bold flex items-center gap-2 shadow-lg shadow-terracota/20 hover:-translate-y-1 transition-all"
             >
               <span className="material-symbols-outlined">favorite</span> {heroTexts.buttonPrimary}

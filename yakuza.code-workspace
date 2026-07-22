@@ -5,6 +5,12 @@
 		},
 		{
 			"path": "../server"
+		},
+		{
+			"path": "../yakuza2"
+		},
+		{
+			"path": "../portofolio_yakuza"
 		}
 	],
 	"settings": {}

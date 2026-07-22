@@ -7,7 +7,7 @@ export const DEFAULT_TEXTS = {
     title: 'Ellos felices,',
     titleHighlight: 'tú tranquilo.',
     description: 'Cuidado personalizado para mascotas en Ontinyent. Un entorno seguro, tranquilo y lleno de cariño para que puedas marcharte con total confianza.',
-    buttonPrimary: 'Reservar una primera quedada',
+    buttonPrimary: 'Solicitar una reserva',
     buttonSecondary: 'Ver servicios',
     badge1: 'Pocas plazas',
     badge2: 'Fotos y vídeos a diario',

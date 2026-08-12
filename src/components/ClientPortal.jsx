@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { loadStripe } from '@stripe/stripe-js';
+import PetCareFormModal from './PetCareFormModal';
 
 const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? '' : 'https://alilyback.duckdns.org/eris';
 
@@ -19,6 +20,7 @@ export default function ClientPortal() {
   const [stripe, setStripe] = useState(null);
   const [payingBooking, setPayingBooking] = useState(null);
   const [clientSecret, setClientSecret] = useState('');
+  const [careFormPet, setCareFormPet] = useState(null);
 
   useEffect(() => {
     fetch(`${API_BASE}/api/stripe-config`).then(r => r.json()).then(d => {
@@ -213,6 +215,7 @@ export default function ClientPortal() {
           </div>
           <nav className="space-y-2">
             {navItem('bookings', 'Mis Reservas', 'event')}
+            {navItem('pets', 'Mis Mascotas', 'pets')}
             {navItem('invoices', 'Mis Facturas', 'receipt')}
             {navItem('pay', 'Pagar', 'credit_card')}
           </nav>
@@ -270,6 +273,77 @@ export default function ClientPortal() {
               </div>
             )}
             <a href="/#contacto" className="inline-block mt-6 text-xs font-bold text-terracota hover:underline">+ Solicitar nueva reserva</a>
+          </>
+        )}
+
+        {activeSection === 'pets' && (
+          <>
+            <h1 className="text-3xl font-display font-bold text-primary mb-2">Mis Mascotas</h1>
+            <p className="text-sm text-on-surface-variant mb-8">Aquí puedes ver y actualizar la ficha de cuidados de cada mascota.</p>
+            {pets.length === 0 ? (
+              <div className="bg-white rounded-3xl p-8 border border-outline-variant/20 shadow-sm text-center">
+                <span className="material-symbols-outlined text-4xl text-on-surface-variant/30 mb-3">pets</span>
+                <p className="text-sm text-on-surface-variant">No tienes mascotas registradas todavía.</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {pets.map(pet => (
+                  <div key={pet.id} className="bg-white rounded-3xl p-6 border border-outline-variant/20 shadow-sm">
+                    <div className="flex items-start gap-4">
+                      <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center shrink-0">
+                        <span className="material-symbols-outlined text-2xl text-primary">
+                          {pet.type?.toLowerCase().includes('perro') ? 'pets' : pet.type?.toLowerCase().includes('gato') ? 'cat' : 'cruelty_free'}
+                        </span>
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <h3 className="font-bold text-primary text-lg flex items-center gap-2">
+                              {pet.name}
+                              <span className="text-xs font-normal text-on-surface-variant bg-surface-container px-2 py-0.5 rounded-full">{pet.type}</span>
+                            </h3>
+                            <p className="text-xs text-on-surface-variant mt-0.5">{pet.breed ? `Raza: ${pet.breed}` : ''}{pet.age ? ` · Edad: ${pet.age}` : ''}</p>
+                          </div>
+                          {pet.formFilledAt ? (
+                            <span className="text-[10px] font-bold bg-emerald-100 text-emerald-700 px-2 py-1 rounded-full flex items-center gap-1">
+                              <span className="material-symbols-outlined text-xs">check_circle</span>Ficha completa
+                            </span>
+                          ) : (
+                            <span className="text-[10px] font-bold bg-amber-100 text-amber-700 px-2 py-1 rounded-full flex items-center gap-1">
+                              <span className="material-symbols-outlined text-xs">pending</span>Ficha pendiente
+                            </span>
+                          )}
+                        </div>
+                        {!pet.formFilledAt && (
+                          <p className="mt-2 text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-xl p-3">
+                            Completa la ficha para que Eris pueda conocer mejor los hábitos y necesidades de tu mascota.
+                          </p>
+                        )}
+                        <button
+                          onClick={() => setCareFormPet(pet)}
+                          className="mt-3 flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-xl text-xs font-bold hover:bg-primary/90 transition-colors"
+                        >
+                          <span className="material-symbols-outlined text-sm">assignment</span>
+                          {pet.formFilledAt ? 'Editar ficha de cuidados' : 'Completar ficha de cuidados'}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            {careFormPet && (
+              <PetCareFormModal
+                pet={careFormPet}
+                token={token}
+                role="CLIENT"
+                onClose={() => setCareFormPet(null)}
+                onSaved={(updatedPet) => {
+                  setPets(prev => prev.map(p => p.id === updatedPet.id ? { ...p, ...updatedPet } : p));
+                  setCareFormPet(updatedPet);
+                }}
+              />
+            )}
           </>
         )}
 

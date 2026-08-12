@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? '' : 'https://alilyback.duckdns.org/eris';
 
@@ -26,8 +26,12 @@ export default function DailyCarePanel({ token, pets }) {
   const [diaryNotes, setDiaryNotes] = useState('');
 
   // Photo
-  const [photoUrl, setPhotoUrl] = useState('');
+  const [photoFile, setPhotoFile] = useState(null);
+  const [photoPreview, setPhotoPreview] = useState(null);
   const [photoCaption, setPhotoCaption] = useState('');
+  const [photoDragging, setPhotoDragging] = useState(false);
+  const [photoUploading, setPhotoUploading] = useState(false);
+  const fileInputRef = useRef();
 
   // Medication
   const [showMedForm, setShowMedForm] = useState(false);
@@ -95,16 +99,39 @@ export default function DailyCarePanel({ token, pets }) {
     } catch (err) { console.error(err); }
   };
 
+  const handlePhotoFile = (file) => {
+    if (!file) return;
+    setPhotoFile(file);
+    const reader = new FileReader();
+    reader.onloadend = () => setPhotoPreview(reader.result);
+    reader.readAsDataURL(file);
+  };
+
   const handleAddPhoto = async (e) => {
     e.preventDefault();
-    if (!selectedBooking?.pet?.id || !photoUrl) return;
+    if (!selectedBooking?.pet?.id || !photoFile) return;
+    setPhotoUploading(true);
     try {
+      const fd = new FormData();
+      fd.append('file', photoFile);
+      fd.append('petId', selectedBooking.pet.id.toString());
+      if (photoCaption) fd.append('caption', photoCaption);
       const res = await fetch(`${API_BASE}/api/admin/pet-photos`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json', ...headers },
-        body: JSON.stringify({ petId: selectedBooking.pet.id, url: photoUrl, caption: photoCaption })
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` },
+        body: fd
       });
-      if (res.ok) { setPhotoUrl(''); setPhotoCaption(''); fetchAll(selectedBooking); }
+      if (res.ok) {
+        setPhotoFile(null);
+        setPhotoPreview(null);
+        setPhotoCaption('');
+        fetchAll(selectedBooking);
+      } else {
+        const err = await res.json();
+        alert(err.error || 'Error al subir foto');
+      }
     } catch (err) { console.error(err); }
+    setPhotoUploading(false);
   };
 
   const handleAddMedication = async (e) => {
@@ -268,18 +295,75 @@ export default function DailyCarePanel({ token, pets }) {
         <div className="bg-white border border-outline-variant/20 p-6 rounded-[2.5rem] shadow-sm">
           <h3 className="text-sm font-bold text-primary mb-4">Fotos</h3>
           <form onSubmit={handleAddPhoto} className="space-y-3 mb-4">
-            <input value={photoUrl} onChange={(e) => setPhotoUrl(e.target.value)} placeholder="Pega la URL de la imagen o base64..." className="w-full bg-surface-container-low border border-outline-variant/30 rounded-xl p-2.5 text-xs" />
-            <input value={photoCaption} onChange={(e) => setPhotoCaption(e.target.value)} placeholder="Pie de foto (opcional)" className="w-full bg-surface-container-low border border-outline-variant/30 rounded-xl p-2.5 text-xs" />
-            <button type="submit" className="w-full bg-primary text-white py-2.5 rounded-xl font-bold text-xs hover:scale-[0.98] transition-all">Añadir foto</button>
+            {/* Zona de arrastrar/seleccionar foto */}
+            <div
+              className={`border-2 border-dashed rounded-2xl transition-all cursor-pointer ${
+                photoDragging ? 'border-primary bg-primary/5' : photoPreview ? 'border-emerald-400 bg-emerald-50' : 'border-outline-variant/30 hover:border-primary/40'
+              }`}
+              onDragOver={e => { e.preventDefault(); setPhotoDragging(true); }}
+              onDragLeave={() => setPhotoDragging(false)}
+              onDrop={e => { e.preventDefault(); setPhotoDragging(false); const f = e.dataTransfer.files?.[0]; if (f) handlePhotoFile(f); }}
+              onClick={() => !photoPreview && fileInputRef.current?.click()}
+            >
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*,video/mp4,video/webm"
+                className="hidden"
+                onChange={e => handlePhotoFile(e.target.files?.[0])}
+              />
+              {photoPreview ? (
+                <div className="relative">
+                  <img src={photoPreview} alt="preview" className="w-full max-h-48 object-contain rounded-xl p-2" />
+                  <button
+                    type="button"
+                    onClick={e => { e.stopPropagation(); setPhotoFile(null); setPhotoPreview(null); }}
+                    className="absolute top-2 right-2 w-6 h-6 bg-black/50 text-white rounded-full flex items-center justify-center text-xs hover:bg-rose-600 transition-colors"
+                  >✕</button>
+                  <p className="text-center text-[9px] text-emerald-700 font-bold pb-2">{photoFile?.name}</p>
+                </div>
+              ) : (
+                <div className="flex items-center gap-3 p-4">
+                  <div className="w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                    <span className="material-symbols-outlined text-lg">add_photo_alternate</span>
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-on-surface">{photoDragging ? 'Suelta aquí' : 'Añadir foto'}</p>
+                    <p className="text-xs text-on-surface-variant">Arrastra o haz clic · JPG, PNG, WEBP, MP4</p>
+                  </div>
+                </div>
+              )}
+            </div>
+            <input
+              value={photoCaption}
+              onChange={e => setPhotoCaption(e.target.value)}
+              placeholder="Pie de foto (opcional)"
+              className="w-full bg-surface-container-low border border-outline-variant/30 rounded-xl p-2.5 text-xs"
+            />
+            <button
+              type="submit"
+              disabled={!photoFile || photoUploading}
+              className="w-full bg-primary text-white py-2.5 rounded-xl font-bold text-xs hover:scale-[0.98] transition-all disabled:opacity-40 flex items-center justify-center gap-2"
+            >
+              {photoUploading ? (
+                <><span className="material-symbols-outlined text-sm animate-spin">sync</span>Subiendo...</>
+              ) : 'Añadir foto'}
+            </button>
           </form>
           <div className="grid grid-cols-3 gap-2 max-h-64 overflow-y-auto">
-            {photos.map(ph => (
-              <div key={ph.id} className="relative group">
-                <img src={ph.url} alt={ph.caption || ''} className="w-full aspect-square object-cover rounded-xl border border-outline-variant/10" />
-                <button onClick={() => handleDeletePhoto(ph.id)} className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/50 text-white flex items-center justify-center text-[8px] opacity-0 group-hover:opacity-100 transition-opacity">✕</button>
-                {ph.caption && <p className="text-[8px] text-on-surface-variant mt-0.5 truncate">{ph.caption}</p>}
-              </div>
-            ))}
+            {photos.map(ph => {
+              // Support both old URL-based and new /uploads/pets/ paths
+              const imgSrc = ph.url.startsWith('http') || ph.url.startsWith('data:')
+                ? ph.url
+                : `${API_BASE}${ph.url}`;
+              return (
+                <div key={ph.id} className="relative group">
+                  <img src={imgSrc} alt={ph.caption || ''} className="w-full aspect-square object-cover rounded-xl border border-outline-variant/10" />
+                  <button onClick={() => handleDeletePhoto(ph.id)} className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/50 text-white flex items-center justify-center text-[8px] opacity-0 group-hover:opacity-100 transition-opacity">✕</button>
+                  {ph.caption && <p className="text-[8px] text-on-surface-variant mt-0.5 truncate">{ph.caption}</p>}
+                </div>
+              );
+            })}
             {photos.length === 0 && <p className="col-span-3 text-center text-[10px] text-on-surface-variant italic py-4">Sin fotos aún</p>}
           </div>
         </div>

@@ -9,6 +9,7 @@ import Calendar from './Calendar';
 import AdminImages from './AdminImages';
 import AdminSettings from './AdminSettings';
 import AdminTexts from './AdminTexts';
+import PetCareFormModal from './PetCareFormModal';
 
 const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? '' : 'https://alilyback.duckdns.org/eris';
 
@@ -123,6 +124,9 @@ export default function AdminPanel() {
   const [globalSearch, setGlobalSearch] = useState('');
   const [bookingViewType, setBookingViewType] = useState('list'); // list o kanban
   const [showArchivedBookings, setShowArchivedBookings] = useState(false);
+
+  // Ficha de cuidados de mascota
+  const [careFormPet, setCareFormPet] = useState(null);
 
   const startTour = () => {
     const driverObj = driver({
@@ -1874,21 +1878,41 @@ export default function AdminPanel() {
                       </div>
                       
                       <div className="flex-1">
-                        <div className="flex justify-between items-center border-b border-outline-variant/10 pb-2 mb-3">
+                        <div className="flex justify-between items-start border-b border-outline-variant/10 pb-2 mb-3">
                           <div>
                             <h4 className="text-lg font-bold text-primary flex items-center gap-2">
                               {pet.name}
                               <span className="text-xs font-normal text-on-surface-variant bg-surface-container px-2.5 py-0.5 rounded-full uppercase tracking-wider">
                                 {pet.type}
                               </span>
+                              {pet.formFilledAt ? (
+                                <span className="text-[9px] font-bold bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full flex items-center gap-0.5">
+                                  <span className="material-symbols-outlined text-[10px]">check_circle</span>
+                                  Ficha completa
+                                </span>
+                              ) : (
+                                <span className="text-[9px] font-bold bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full flex items-center gap-0.5">
+                                  <span className="material-symbols-outlined text-[10px]">pending</span>
+                                  Ficha incompleta
+                                </span>
+                              )}
                             </h4>
                             <p className="text-xs text-on-surface-variant/70">
                               Raza: {pet.breed || 'No indicada'} | Edad: {pet.age || 'No indicada'}
                             </p>
                           </div>
-                          <span className="text-xs text-on-surface-variant">
-                            Dueño: <strong className="text-primary-container">{pet.client?.name}</strong>
-                          </span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-on-surface-variant">
+                              Dueño: <strong className="text-primary-container">{pet.client?.name}</strong>
+                            </span>
+                            <button
+                              onClick={() => setCareFormPet(pet)}
+                              className="flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 text-primary border border-primary/20 rounded-xl text-[10px] font-bold hover:bg-primary/20 transition-colors shrink-0"
+                            >
+                              <span className="material-symbols-outlined text-sm">assignment</span>
+                              {pet.formFilledAt ? 'Editar Ficha' : 'Completar Ficha'}
+                            </button>
+                          </div>
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
@@ -1910,6 +1934,20 @@ export default function AdminPanel() {
             )}
           </div>
         )}
+
+      {/* MODAL: FICHA DE CUIDADOS DE MASCOTA */}
+      {careFormPet && (
+        <PetCareFormModal
+          pet={careFormPet}
+          token={token}
+          role="ADMIN"
+          onClose={() => setCareFormPet(null)}
+          onSaved={(updatedPet) => {
+            setPets(prev => prev.map(p => p.id === updatedPet.id ? { ...p, ...updatedPet } : p));
+            setCareFormPet(updatedPet);
+          }}
+        />
+      )}
 
         {/* TAB 3: PLANIFICADOR GANTT DE OCUPACIÓN */}
         {activeTab === 'planner' && (

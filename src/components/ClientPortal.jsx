@@ -6,6 +6,9 @@ const API_BASE = window.location.hostname === 'localhost' || window.location.hos
 
 export default function ClientPortal() {
   const [token, setToken] = useState(localStorage.getItem('clientToken') || '');
+  const [authMode, setAuthMode] = useState('login'); // 'login' | 'register'
+  const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loginError, setLoginError] = useState('');
@@ -35,16 +38,18 @@ export default function ClientPortal() {
     const magicToken = params.get('token');
     const paymentSuccess = params.get('payment');
     if (magicToken) {
-      fetch(`${API_BASE}/api/portal/verify-link?token=${magicToken}`)
+      fetch(`${API_BASE}/api/portal/verify-link?token=${encodeURIComponent(magicToken)}`)
         .then(r => r.json())
         .then(d => {
           if (d.token) {
             localStorage.setItem('clientToken', d.token);
             setToken(d.token);
             window.history.replaceState({}, '', '/portal');
+          } else if (d.error) {
+            setLoginError(d.error);
           }
         })
-        .catch(() => {});
+        .catch(() => setLoginError('No se pudo verificar el enlace mágico. Solicita uno nuevo.'));
     }
     if (paymentSuccess === 'success') {
       alert('¡Pago realizado con éxito!');
@@ -96,21 +101,46 @@ export default function ClientPortal() {
     }
   };
 
+  const handleRegister = async (e) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setLoginError('');
+    try {
+      const res = await fetch(`${API_BASE}/api/auth/register-client`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, email, phone, password })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Error al crear la cuenta');
+      localStorage.setItem('clientToken', data.token);
+      setToken(data.token);
+    } catch (error) {
+      setLoginError(error.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleSendMagicLink = async () => {
-    if (!email) return;
+    if (!email.trim()) {
+      setLoginError('Escribe tu email primero para enviarte el enlace mágico.');
+      return;
+    }
     setMagicSent(false);
+    setLoginError('');
     setIsLoading(true);
     try {
       const res = await fetch(`${API_BASE}/api/portal/send-link`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email })
+        body: JSON.stringify({ email: email.trim() })
       });
       const data = await res.json();
       if (res.ok) setMagicSent(true);
-      else setLoginError(data.error);
+      else setLoginError(data.error || 'No se pudo enviar el enlace');
     } catch (err) {
-      setLoginError('Error al enviar enlace');
+      setLoginError('Error de conexión al enviar enlace');
     }
     setIsLoading(false);
   };
@@ -145,14 +175,86 @@ export default function ClientPortal() {
             <span className="material-symbols-outlined text-primary text-3xl">pets</span>
           </div>
           <h2 className="text-2xl font-display font-bold text-primary mb-2">Espacio de Cliente</h2>
-          <p className="text-sm text-on-surface-variant mb-8">Accede para gestionar tus reservas y facturas.</p>
+          <p className="text-sm text-on-surface-variant mb-6">Accede o crea tu perfil para gestionar tus reservas, mascotas y facturas.</p>
+
+          {/* Selector Entrar / Crear cuenta */}
+          <div className="grid grid-cols-2 gap-1.5 p-1 bg-surface-container-low rounded-2xl border border-outline-variant/20 mb-6">
+            <button
+              type="button"
+              onClick={() => { setAuthMode('login'); setLoginError(''); setMagicSent(false); }}
+              className={`py-2.5 rounded-xl text-xs font-bold transition-all ${
+                authMode === 'login' ? 'bg-primary text-white shadow-sm' : 'text-on-surface-variant hover:text-primary'
+              }`}
+            >
+              Entrar
+            </button>
+            <button
+              type="button"
+              onClick={() => { setAuthMode('register'); setLoginError(''); setMagicSent(false); }}
+              className={`py-2.5 rounded-xl text-xs font-bold transition-all ${
+                authMode === 'register' ? 'bg-primary text-white shadow-sm' : 'text-on-surface-variant hover:text-primary'
+              }`}
+            >
+              Crear cuenta
+            </button>
+          </div>
 
           {magicSent ? (
             <div className="p-6 bg-emerald-50 rounded-2xl border border-emerald-200">
               <span className="material-symbols-outlined text-emerald-600 text-3xl mb-2">mark_email_read</span>
               <p className="text-sm font-bold text-emerald-800">Enlace enviado</p>
-              <p className="text-xs text-emerald-600 mt-1">Revisa tu bandeja de entrada y haz clic en el enlace para acceder.</p>
+              <p className="text-xs text-emerald-600 mt-1">Revisa tu bandeja de entrada (y carpeta de spam) y haz clic en el botón para entrar directamente.</p>
+              <button
+                type="button"
+                onClick={() => setMagicSent(false)}
+                className="mt-4 text-xs font-bold text-emerald-800 underline"
+              >
+                Volver
+              </button>
             </div>
+          ) : authMode === 'register' ? (
+            <form onSubmit={handleRegister} className="space-y-3.5 text-left">
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Nombre completo *"
+                required
+                className="w-full bg-surface-container-low border-outline-variant/30 rounded-xl p-4 focus:ring-primary focus:border-primary text-sm"
+              />
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Email *"
+                required
+                className="w-full bg-surface-container-low border-outline-variant/30 rounded-xl p-4 focus:ring-primary focus:border-primary text-sm"
+              />
+              <input
+                type="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="Teléfono (opcional)"
+                className="w-full bg-surface-container-low border-outline-variant/30 rounded-xl p-4 focus:ring-primary focus:border-primary text-sm"
+              />
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Crea una contraseña *"
+                required
+                minLength={4}
+                className="w-full bg-surface-container-low border-outline-variant/30 rounded-xl p-4 focus:ring-primary focus:border-primary text-sm"
+              />
+              {loginError && <p className="text-rose-600 text-xs font-bold">{loginError}</p>}
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="w-full bg-primary text-white font-bold p-4 rounded-xl hover:bg-primary/90 transition-colors disabled:opacity-50"
+              >
+                {isLoading ? 'Creando cuenta...' : 'Crear mi perfil'}
+              </button>
+            </form>
           ) : (
             <>
               <form onSubmit={handleLogin} className="space-y-4">
@@ -171,10 +273,10 @@ export default function ClientPortal() {
                 <span className="text-xs text-on-surface-variant font-bold">O</span>
                 <div className="flex-1 h-px bg-outline-variant/30"></div>
               </div>
-              <button onClick={handleSendMagicLink} disabled={isLoading || !email}
+              <button type="button" onClick={handleSendMagicLink} disabled={isLoading || !email.trim()}
                 className="w-full border-2 border-outline-variant/30 text-on-surface font-bold p-4 rounded-xl hover:bg-surface-container-low transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
-                <span className="material-symbols-outlined text-sm">magic</span>
-                Enviar enlace mágico
+                <span className="material-symbols-outlined text-sm">mail</span>
+                Enviar enlace mágico al correo
               </button>
             </>
           )}

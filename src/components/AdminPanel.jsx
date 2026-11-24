@@ -10,6 +10,8 @@ import AdminImages from './AdminImages';
 import AdminSettings from './AdminSettings';
 import AdminTexts from './AdminTexts';
 import PetCareFormModal from './PetCareFormModal';
+import CrmDirectoryView from './CrmDirectoryView';
+import OccupancyPlannerView from './OccupancyPlannerView';
 
 const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? '' : 'https://alilyback.duckdns.org/eris';
 
@@ -170,7 +172,7 @@ export default function AdminPanel() {
       const headers = { 'Authorization': `Bearer ${token}` };
 
       // 1. Reservas
-      if (activeTab === 'bookings' || activeTab === 'planner') {
+      if (activeTab === 'bookings' || activeTab === 'planner' || activeTab === 'crm') {
         const res = await fetch(`${API_BASE}/api/admin/bookings${showArchivedBookings ? '?archived=true' : ''}`, { headers });
         if (res.ok) setBookings(await res.json());
         else if (res.status === 401 || res.status === 403) handleLogout();
@@ -1596,343 +1598,43 @@ export default function AdminPanel() {
 
         {/* TAB 2: CRM CLIENTES Y MASCOTAS */}
         {activeTab === 'crm' && (
-          <div>
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
-              <div>
-                <h1 className="font-display-lg text-headline-md text-primary">Directorio CRM</h1>
-                <p className="text-sm text-on-surface-variant">Fichas permanentes de dueños de mascotas y animales registrados en Eris Pet Care.</p>
-              </div>
-              <div className="relative w-full md:w-80">
-                <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
-                <input
-                  type="text"
-                  placeholder="Buscar cliente, email o mascota..."
-                  value={globalSearch}
-                  onChange={(e) => setGlobalSearch(e.target.value)}
-                  className="w-full bg-surface-container-low border border-outline-variant/30 rounded-2xl py-3 pl-12 pr-4 focus:ring-primary focus:border-primary text-sm text-on-surface"
-                />
-              </div>
-            </div>
-
-            {/* Selector de Sub-pestañas */}
-            <div className="flex gap-4 mb-8 border-b border-outline-variant/15">
-              <button
-                onClick={() => setCrmSubTab('clients')}
-                className={`pb-3 px-2 text-sm font-bold uppercase tracking-wider border-b-2 transition-all ${
-                  crmSubTab === 'clients' ? 'border-primary text-primary' : 'border-transparent text-on-surface-variant'
-                }`}
-              >
-                Clientes ({clients.length})
-              </button>
-              <button
-                onClick={() => setCrmSubTab('pets')}
-                className={`pb-3 px-2 text-sm font-bold uppercase tracking-wider border-b-2 transition-all ${
-                  crmSubTab === 'pets' ? 'border-primary text-primary' : 'border-transparent text-on-surface-variant'
-                }`}
-              >
-                Mascotas ({pets.length})
-              </button>
-            </div>
-
-            {crmSubTab === 'clients' ? (
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
-                
-                {/* Formulario Crear Cliente */}
-                <div className="lg:col-span-4 bg-white border border-outline-variant/20 p-6 rounded-[2rem] shadow-sm">
-                  <h3 className="text-lg font-bold text-primary mb-6 flex items-center gap-2">
-                    <span className="material-symbols-outlined text-base">person_add</span>
-                    Registrar nuevo Cliente
-                  </h3>
-                  <form onSubmit={handleCreateClient} className="space-y-4">
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Nombre Completo</label>
-                      <input
-                        type="text"
-                        value={newClientName}
-                        onChange={(e) => setNewClientName(e.target.value)}
-                        placeholder="Ej. Juan Pérez"
-                        className="w-full bg-surface-container-low border border-outline-variant/30 rounded-xl p-3 text-sm"
-                        required
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Email</label>
-                      <input
-                        type="email"
-                        value={newClientEmail}
-                        onChange={(e) => setNewClientEmail(e.target.value)}
-                        placeholder="juan@email.com"
-                        className="w-full bg-surface-container-low border border-outline-variant/30 rounded-xl p-3 text-sm"
-                        required
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Teléfono</label>
-                      <input
-                        type="tel"
-                        value={newClientPhone}
-                        onChange={(e) => setNewClientPhone(e.target.value)}
-                        placeholder="600 000 000"
-                        className="w-full bg-surface-container-low border border-outline-variant/30 rounded-xl p-3 text-sm"
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Contacto de Emergencia</label>
-                      <input
-                        type="text"
-                        value={newClientEmergency}
-                        onChange={(e) => setNewClientEmergency(e.target.value)}
-                        placeholder="Nombre y telf (ej. Hermana 600...)"
-                        className="w-full bg-surface-container-low border border-outline-variant/30 rounded-xl p-3 text-sm"
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Notas del Cliente</label>
-                      <textarea
-                        value={newClientNotes}
-                        onChange={(e) => setNewClientNotes(e.target.value)}
-                        placeholder="Observaciones generales..."
-                        className="w-full bg-surface-container-low border border-outline-variant/30 rounded-xl p-3 text-sm"
-                        rows="3"
-                      ></textarea>
-                    </div>
-                    <button
-                      type="submit"
-                      className="w-full bg-primary text-white py-3 rounded-xl font-bold text-xs hover:scale-[0.98] transition-transform"
-                    >
-                      Añadir Cliente al CRM
-                    </button>
-                  </form>
-                </div>
-
-                {/* Listado de Clientes */}
-                <div className="lg:col-span-8 space-y-4">
-                  {filteredClients.map(client => (
-                    <div key={client.id} className="bg-white border border-outline-variant/20 rounded-[2rem] p-6 shadow-sm">
-                      <div className="flex justify-between items-start gap-4 mb-4 border-b border-outline-variant/10 pb-3">
-                        <div>
-                          <h4 className="text-lg font-bold text-primary">{client.name}</h4>
-                          <p className="text-xs text-on-surface-variant/70">{client.email} | Telf: {client.phone || 'No indicado'}</p>
-                        </div>
-                        <div className="flex gap-2 items-center">
-                          <button
-                            type="button"
-                            onClick={() => handleSelectClient(client)}
-                            className="bg-primary/10 text-primary border border-primary/20 text-[10px] font-bold px-3 py-1.5 rounded-lg hover:bg-primary/20 transition-colors flex items-center gap-1"
-                          >
-                            <span className="material-symbols-outlined text-xs">history</span>
-                            Ficha & Notas
-                          </button>
-                          <span className="text-[10px] font-bold bg-surface-container px-3 py-1.5 rounded-lg text-on-surface-variant">
-                            ID: #{client.id}
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
-                        <div>
-                          <p className="text-[9px] font-bold uppercase tracking-widest text-on-surface-variant/50">Dirección y Canal Preferido</p>
-                          <p className="text-xs font-semibold text-primary/90 mt-1">
-                            {client.address || 'Sin dirección registrada'} 
-                            <span className="text-on-surface-variant/50 font-normal"> ({client.preferredChannel || 'WHATSAPP'})</span>
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-[9px] font-bold uppercase tracking-widest text-on-surface-variant/50">Contacto Emergencia</p>
-                          <p className="text-xs text-on-surface-variant mt-1">{client.emergencyContact || 'No registrado'}</p>
-                        </div>
-                      </div>
-
-                      {/* Mascotas del Cliente */}
-                      <div>
-                        <p className="text-[9px] font-bold uppercase tracking-widest text-on-surface-variant/50 mb-2">Mascotas Asociadas</p>
-                        {client.pets.length === 0 ? (
-                          <p className="text-xs text-on-surface-variant/60 italic">No hay mascotas asociadas a este propietario.</p>
-                        ) : (
-                          <div className="flex flex-wrap gap-2">
-                            {client.pets.map(pet => (
-                              <div key={pet.id} className="flex items-center gap-1.5 px-3 py-1.5 bg-surface-container-low border border-outline-variant/15 rounded-xl text-xs font-bold text-primary">
-                                <span className="material-symbols-outlined text-xs">
-                                  {pet.type.toLowerCase().includes('perro') ? 'pets' : 'cat'}
-                                </span>
-                                {pet.name} ({pet.breed || 'Sin raza'})
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
-                
-                {/* Formulario Crear Mascota */}
-                <div className="lg:col-span-4 bg-white border border-outline-variant/20 p-6 rounded-[2rem] shadow-sm">
-                  <h3 className="text-lg font-bold text-primary mb-6 flex items-center gap-2">
-                    <span className="material-symbols-outlined text-base">pets</span>
-                    Registrar nueva Mascota
-                  </h3>
-                  <form onSubmit={handleCreatePet} className="space-y-4">
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Propietario (CRM)</label>
-                      <select
-                        value={newPetClientId}
-                        onChange={(e) => setNewPetClientId(e.target.value)}
-                        className="w-full bg-surface-container-low border border-outline-variant/30 rounded-xl p-3 text-sm text-on-surface"
-                        required
-                      >
-                        {clients.map(c => (
-                          <option key={c.id} value={c.id}>{c.name} ({c.email})</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Nombre</label>
-                        <input
-                          type="text"
-                          value={newPetName}
-                          onChange={(e) => setNewPetName(e.target.value)}
-                          placeholder="Kira"
-                          className="w-full bg-surface-container-low border border-outline-variant/30 rounded-xl p-3 text-sm"
-                          required
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Tipo</label>
-                        <select
-                          value={newPetType}
-                          onChange={(e) => setNewPetType(e.target.value)}
-                          className="w-full bg-surface-container-low border border-outline-variant/30 rounded-xl p-3 text-sm text-on-surface"
-                        >
-                          <option>Gato</option>
-                          <option>Perro</option>
-                          <option>Pequeño mamífero</option>
-                          <option>Otros</option>
-                        </select>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Raza</label>
-                        <input
-                          type="text"
-                          value={newPetBreed}
-                          onChange={(e) => setNewPetBreed(e.target.value)}
-                          placeholder="Ej. Persa"
-                          className="w-full bg-surface-container-low border border-outline-variant/30 rounded-xl p-3 text-sm"
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Edad</label>
-                        <input
-                          type="text"
-                          value={newPetAge}
-                          onChange={(e) => setNewPetAge(e.target.value)}
-                          placeholder="Ej. 3 años"
-                          className="w-full bg-surface-container-low border border-outline-variant/30 rounded-xl p-3 text-sm"
-                        />
-                      </div>
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Detalles de Alimentación</label>
-                      <textarea
-                        value={newPetDiet}
-                        onChange={(e) => setNewPetDiet(e.target.value)}
-                        placeholder="Tipo de pienso, porciones, horarios..."
-                        className="w-full bg-surface-container-low border border-outline-variant/30 rounded-xl p-3 text-sm"
-                        rows="2"
-                      ></textarea>
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Notas Médicas / Cuidados</label>
-                      <textarea
-                        value={newPetNotes}
-                        onChange={(e) => setNewPetNotes(e.target.value)}
-                        placeholder="Medicación habitual, miedos, alergias..."
-                        className="w-full bg-surface-container-low border border-outline-variant/30 rounded-xl p-3 text-sm"
-                        rows="2"
-                      ></textarea>
-                    </div>
-                    <button
-                      type="submit"
-                      className="w-full bg-primary text-white py-3 rounded-xl font-bold text-xs hover:scale-[0.98] transition-transform"
-                    >
-                      Registrar Mascota
-                    </button>
-                  </form>
-                </div>
-
-                {/* Listado de Mascotas */}
-                <div className="lg:col-span-8 space-y-4">
-                  {filteredPets.map(pet => (
-                    <div key={pet.id} className="bg-white border border-outline-variant/20 rounded-[2rem] p-6 shadow-sm flex items-start gap-5">
-                      <div className="w-14 h-14 rounded-2xl bg-surface-container flex items-center justify-center shrink-0">
-                        <span className="material-symbols-outlined text-3xl text-primary">
-                          {pet.type.toLowerCase().includes('perro') ? 'pets' :
-                           pet.type.toLowerCase().includes('gato') ? 'cat' : 'cruelty_free'}
-                        </span>
-                      </div>
-                      
-                      <div className="flex-1">
-                        <div className="flex justify-between items-start border-b border-outline-variant/10 pb-2 mb-3">
-                          <div>
-                            <h4 className="text-lg font-bold text-primary flex items-center gap-2">
-                              {pet.name}
-                              <span className="text-xs font-normal text-on-surface-variant bg-surface-container px-2.5 py-0.5 rounded-full uppercase tracking-wider">
-                                {pet.type}
-                              </span>
-                              {pet.formFilledAt ? (
-                                <span className="text-[9px] font-bold bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full flex items-center gap-0.5">
-                                  <span className="material-symbols-outlined text-[10px]">check_circle</span>
-                                  Ficha completa
-                                </span>
-                              ) : (
-                                <span className="text-[9px] font-bold bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full flex items-center gap-0.5">
-                                  <span className="material-symbols-outlined text-[10px]">pending</span>
-                                  Ficha incompleta
-                                </span>
-                              )}
-                            </h4>
-                            <p className="text-xs text-on-surface-variant/70">
-                              Raza: {pet.breed || 'No indicada'} | Edad: {pet.age || 'No indicada'}
-                            </p>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs text-on-surface-variant">
-                              Dueño: <strong className="text-primary-container">{pet.client?.name}</strong>
-                            </span>
-                            <button
-                              onClick={() => setCareFormPet(pet)}
-                              className="flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 text-primary border border-primary/20 rounded-xl text-[10px] font-bold hover:bg-primary/20 transition-colors shrink-0"
-                            >
-                              <span className="material-symbols-outlined text-sm">assignment</span>
-                              {pet.formFilledAt ? 'Editar Ficha' : 'Completar Ficha'}
-                            </button>
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-                          <div className="bg-surface-container-low p-3 rounded-xl">
-                            <p className="text-[9px] font-bold uppercase tracking-widest text-on-surface-variant/60">Alimentación / Dieta</p>
-                            <p className="text-on-surface mt-1 font-semibold">{pet.diet || 'Estándar'}</p>
-                          </div>
-                          <div className="bg-surface-container-low p-3 rounded-xl">
-                            <p className="text-[9px] font-bold uppercase tracking-widest text-on-surface-variant/60">Médico y Comportamiento</p>
-                            <p className="text-on-surface mt-1 font-semibold">{pet.medicalNotes || 'Ninguna observación médica'}</p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-              </div>
-            )}
-          </div>
+          <CrmDirectoryView
+            clients={clients}
+            pets={pets}
+            bookings={bookings}
+            globalSearch={globalSearch}
+            setGlobalSearch={setGlobalSearch}
+            crmSubTab={crmSubTab}
+            setCrmSubTab={setCrmSubTab}
+            handleSelectClient={handleSelectClient}
+            setCareFormPet={setCareFormPet}
+            handleCreateClient={handleCreateClient}
+            newClientName={newClientName}
+            setNewClientName={setNewClientName}
+            newClientEmail={newClientEmail}
+            setNewClientEmail={setNewClientEmail}
+            newClientPhone={newClientPhone}
+            setNewClientPhone={setNewClientPhone}
+            newClientEmergency={newClientEmergency}
+            setNewClientEmergency={setNewClientEmergency}
+            newClientNotes={newClientNotes}
+            setNewClientNotes={setNewClientNotes}
+            handleCreatePet={handleCreatePet}
+            newPetClientId={newPetClientId}
+            setNewPetClientId={setNewPetClientId}
+            newPetName={newPetName}
+            setNewPetName={setNewPetName}
+            newPetType={newPetType}
+            setNewPetType={setNewPetType}
+            newPetBreed={newPetBreed}
+            setNewPetBreed={setNewPetBreed}
+            newPetAge={newPetAge}
+            setNewPetAge={setNewPetAge}
+            newPetDiet={newPetDiet}
+            setNewPetDiet={setNewPetDiet}
+            newPetNotes={newPetNotes}
+            setNewPetNotes={setNewPetNotes}
+          />
         )}
 
       {/* MODAL: FICHA DE CUIDADOS DE MASCOTA */}
@@ -1951,81 +1653,14 @@ export default function AdminPanel() {
 
         {/* TAB 3: PLANIFICADOR GANTT DE OCUPACIÓN */}
         {activeTab === 'planner' && (
-          <div>
-            <div className="mb-8">
-              <h1 className="font-display-lg text-headline-md text-primary">Planificador de Ocupación</h1>
-              <p className="text-sm text-on-surface-variant">Línea de tiempo mensual que muestra la agenda de estancias de cada mascota en Julio de 2026.</p>
-            </div>
-
-            {pets.length === 0 ? (
-              <div className="bg-white rounded-[2rem] p-12 text-center border border-outline-variant/20 shadow-sm">
-                <span className="material-symbols-outlined text-5xl text-outline-variant/40 mb-4 block">analytics</span>
-                <p className="font-bold text-lg text-on-surface-variant">Debes tener mascotas en el CRM para usar el planificador.</p>
-              </div>
-            ) : (
-              <div className="overflow-x-auto bg-white rounded-[2rem] p-8 border border-outline-variant/20 shadow-sm">
-                <div className="min-w-[1000px]">
-                  
-                  {/* Fila Cabecera: Días del Mes */}
-                  <div className="border-b border-outline-variant/15 pb-4 text-center font-bold text-xs" style={{ display: 'grid', gridTemplateColumns: '180px repeat(31, 1fr)' }}>
-                    <div className="text-left text-primary">Mascota</div>
-                    {Array.from({ length: 31 }, (_, i) => (
-                      <div key={i} className="text-on-surface-variant">{i + 1}</div>
-                    ))}
-                  </div>
-
-                  {/* Filas de cada Mascota */}
-                  <div className="divide-y divide-outline-variant/10">
-                    {pets.map(pet => (
-                      <div key={pet.id} className="py-4 items-center" style={{ display: 'grid', gridTemplateColumns: '180px repeat(31, 1fr)' }}>
-                        
-                        {/* Nombre Mascota */}
-                        <div className="font-bold text-primary flex items-center gap-2 truncate pr-2">
-                          <span className="material-symbols-outlined text-sm">
-                            {pet.type.toLowerCase().includes('perro') ? 'pets' :
-                             pet.type.toLowerCase().includes('gato') ? 'cat' : 'cruelty_free'}
-                          </span>
-                          {pet.name}
-                          <span className="text-[9px] font-normal text-on-surface-variant/50">({pet.breed || 'cruce'})</span>
-                        </div>
-
-                        {/* Celdas de calendario 1-31 */}
-                        {Array.from({ length: 31 }, (_, i) => {
-                          const dayNum = i + 1;
-                          const dateStr = `2026-07-${String(dayNum).padStart(2, '0')}`;
-                          
-                          // Buscar si hay reserva aceptada para esta mascota cubriendo esta fecha
-                          const activeStay = bookings.find(b => 
-                            b.status === 'ACEPTADA' &&
-                            b.petId === pet.id &&
-                            b.startDate <= dateStr &&
-                            b.endDate >= dateStr
-                          );
-
-                          return (
-                            <div key={i} className="h-9 flex items-center justify-center border-l border-outline-variant/10 relative group">
-                              {activeStay ? (
-                                <div 
-                                  className="w-full h-7 bg-primary/20 border-y border-primary/50 flex items-center justify-center cursor-help"
-                                  title={`Dueño: ${activeStay.name} (${activeStay.service})`}
-                                >
-                                  <span className="w-2 h-2 rounded-full bg-primary"></span>
-                                </div>
-                              ) : (
-                                <span className="text-[10px] text-on-surface-variant/10">·</span>
-                              )}
-                            </div>
-                          );
-                        })}
-
-                      </div>
-                    ))}
-                  </div>
-
-                </div>
-              </div>
-            )}
-          </div>
+          <OccupancyPlannerView
+            pets={pets}
+            clients={clients}
+            bookings={bookings}
+            availability={availability}
+            onNewBookingClick={() => setActiveTab('bookings')}
+            onSelectBookingNavigate={() => setActiveTab('bookings')}
+          />
         )}
 
         {/* TAB 4: TAREAS DIARIAS */}

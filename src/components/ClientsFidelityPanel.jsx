@@ -2,6 +2,23 @@ import { useState, useEffect } from 'react';
 
 const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? '' : 'https://alilyback.duckdns.org/eris';
 
+function parseReviewMedia(raw) {
+  if (!raw) return [];
+  if (Array.isArray(raw)) return raw;
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function resolveReviewMediaUrl(url) {
+  if (!url) return '';
+  if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:')) return url;
+  return `${API_BASE}${url.startsWith('/') ? url : `/${url}`}`;
+}
+
 const TAG_OPTIONS = ['VIP', 'RECURRENTE', 'NUEVO', 'REFERIDO', 'ANUAL', 'PERRO_ANSIOSO', 'GATO_MIEDOSO', 'MEDICACION', 'URGENTE'];
 
 export default function ClientsFidelityPanel({ token }) {
@@ -17,14 +34,18 @@ export default function ClientsFidelityPanel({ token }) {
   const [editingTags, setEditingTags] = useState(null);
   const [tagInput, setTagInput] = useState('');
 
-  // Review form
+  // Review form (crear o editar con multimedia)
   const [showReviewForm, setShowReviewForm] = useState(false);
+  const [editingReviewId, setEditingReviewId] = useState(null);
   const [revName, setRevName] = useState('');
   const [revPetName, setRevPetName] = useState('');
   const [revPetType, setRevPetType] = useState('');
   const [revRating, setRevRating] = useState(5);
   const [revText, setRevText] = useState('');
   const [revInitials, setRevInitials] = useState('');
+  const [revMedia, setRevMedia] = useState([]);
+  const [uploadingRevMedia, setUploadingRevMedia] = useState(false);
+  const [revMediaError, setRevMediaError] = useState('');
 
   // Loyalty config form
   const [cfgNights, setCfgNights] = useState(10);
@@ -78,14 +99,92 @@ export default function ClientsFidelityPanel({ token }) {
   };
 
   // Reviews
+  const openNewReviewModal = () => {
+    setEditingReviewId(null);
+    setRevName('');
+    setRevPetName('');
+    setRevPetType('');
+    setRevRating(5);
+    setRevText('');
+    setRevInitials('');
+    setRevMedia([]);
+    setRevMediaError('');
+    setShowReviewForm(true);
+  };
+
+  const openEditReviewModal = (rev) => {
+    setEditingReviewId(rev.id);
+    setRevName(rev.clientName || '');
+    setRevPetName(rev.petName || '');
+    setRevPetType(rev.petType || '');
+    setRevRating(rev.rating || 5);
+    setRevText(rev.text || '');
+    setRevInitials(rev.initials || '');
+    setRevMedia(parseReviewMedia(rev.media));
+    setRevMediaError('');
+    setShowReviewForm(true);
+  };
+
+  const handleUploadReviewMedia = async (e) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+    setUploadingRevMedia(true);
+    setRevMediaError('');
+    try {
+      const formData = new FormData();
+      for (const f of files) {
+        if (f.size > 100 * 1024 * 1024) {
+          throw new Error(`El archivo "${f.name}" supera el límite de 100MB.`);
+        }
+        formData.append('files', f);
+      }
+      const res = await fetch(`${API_BASE}/api/admin/reviews/upload`, {
+        method: 'POST',
+        headers,
+        body: formData
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Error al subir archivos multimedia');
+      setRevMedia(prev => [...prev, ...(Array.isArray(data.media) ? data.media : [])]);
+    } catch (err) {
+      setRevMediaError(err.message || 'Error subiendo archivo');
+    } finally {
+      setUploadingRevMedia(false);
+      e.target.value = '';
+    }
+  };
+
+  const handleRemoveRevMedia = (index) => {
+    setRevMedia(prev => prev.filter((_, i) => i !== index));
+  };
+
   const handleAddReview = async (e) => {
     e.preventDefault();
+    const payload = {
+      clientName: revName,
+      petName: revPetName,
+      petType: revPetType,
+      rating: revRating,
+      text: revText,
+      initials: revInitials || revName.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2),
+      media: revMedia
+    };
     try {
-      const res = await fetch(`${API_BASE}/api/admin/reviews`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json', ...headers },
-        body: JSON.stringify({ clientName: revName, petName: revPetName, petType: revPetType, rating: revRating, text: revText, initials: revInitials || revName.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2) })
+      const url = editingReviewId
+        ? `${API_BASE}/api/admin/reviews/${editingReviewId}`
+        : `${API_BASE}/api/admin/reviews`;
+      const method = editingReviewId ? 'PATCH' : 'POST';
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json', ...headers },
+        body: JSON.stringify(payload)
       });
-      if (res.ok) { setShowReviewForm(false); setRevName(''); setRevPetName(''); setRevPetType(''); setRevText(''); setRevInitials(''); fetchAll(); }
+      if (res.ok) {
+        setShowReviewForm(false);
+        setEditingReviewId(null);
+        setRevName(''); setRevPetName(''); setRevPetType(''); setRevText(''); setRevInitials(''); setRevMedia([]);
+        fetchAll();
+      }
     } catch (err) { console.error(err); }
   };
 
@@ -339,7 +438,7 @@ export default function ClientsFidelityPanel({ token }) {
       {activeSubTab === 'reviews' && (
         <div className="space-y-6">
           <div className="flex justify-end">
-            <button onClick={() => setShowReviewForm(true)}
+            <button onClick={openNewReviewModal}
               className="px-4 py-2 rounded-xl bg-primary text-white font-bold text-xs hover:scale-[0.98] transition-all">
               + Nueva reseña
             </button>
@@ -347,7 +446,9 @@ export default function ClientsFidelityPanel({ token }) {
 
           {/* Grid de reseñas */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {reviews.map(rev => (
+            {reviews.map(rev => {
+              const revFiles = parseReviewMedia(rev.media);
+              return (
               <div key={rev.id} className={`bg-white border rounded-[2.5rem] p-6 shadow-sm transition-all ${
                 rev.approved ? 'border-emerald-200' : 'border-outline-variant/20 opacity-70'
               }`}>
@@ -369,21 +470,53 @@ export default function ClientsFidelityPanel({ token }) {
                     ))}
                   </div>
                 </div>
-                <p className="text-xs text-on-surface-variant italic mb-4">"{rev.text}"</p>
-                <div className="flex items-center justify-between">
-                  <button onClick={() => handleToggleApproval(rev.id, rev.approved)}
-                    className={`px-3 py-1.5 rounded-lg text-[9px] font-bold border transition-all ${
-                      rev.approved ? 'bg-amber-50 border-amber-200 text-amber-700' : 'bg-emerald-50 border-emerald-200 text-emerald-700'
-                    }`}>
-                    {rev.approved ? 'Ocultar' : 'Aprobar'}
-                  </button>
+                <p className="text-xs text-on-surface-variant italic mb-3">"{rev.text}"</p>
+
+                {revFiles.length > 0 && (
+                  <div className="grid grid-cols-3 gap-2 mb-4">
+                    {revFiles.map((m, idx) => {
+                      const src = resolveReviewMediaUrl(m.url);
+                      const isVideo = m.type === 'VIDEO' || m.mimeType?.startsWith('video/') || /\.(mp4|webm|mov|avi|mkv)$/i.test(m.url || '');
+                      return (
+                        <div key={idx} className="relative rounded-xl overflow-hidden border border-outline-variant/20 bg-black/5 aspect-square">
+                          {isVideo ? (
+                            <video src={src} muted playsInline preload="metadata" className="w-full h-full object-cover" />
+                          ) : (
+                            <img src={src} alt={m.name || 'Foto reseña'} className="w-full h-full object-cover" loading="lazy" />
+                          )}
+                          {isVideo && (
+                            <span className="absolute bottom-1 right-1 bg-black/70 text-white text-[9px] px-1.5 py-0.5 rounded font-bold">
+                              ▶ Vídeo
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <div className="flex items-center gap-2">
+                    <button onClick={() => handleToggleApproval(rev.id, rev.approved)}
+                      className={`px-3 py-1.5 rounded-lg text-[9px] font-bold border transition-all ${
+                        rev.approved ? 'bg-amber-50 border-amber-200 text-amber-700' : 'bg-emerald-50 border-emerald-200 text-emerald-700'
+                      }`}>
+                      {rev.approved ? 'Ocultar' : 'Aprobar'}
+                    </button>
+                    <button onClick={() => openEditReviewModal(rev)}
+                      className="px-3 py-1.5 rounded-lg text-[9px] font-bold border border-primary/25 bg-primary/5 text-primary hover:bg-primary/10 transition-all flex items-center gap-1">
+                      <span className="material-symbols-outlined text-xs">photo_library</span>
+                      Editar / Media ({revFiles.length})
+                    </button>
+                  </div>
                   <button onClick={() => handleDeleteReview(rev.id)}
                     className="px-3 py-1.5 rounded-lg text-[9px] font-bold border border-rose-200 text-rose-600 hover:bg-rose-50 transition-all">
                     Eliminar
                   </button>
                 </div>
               </div>
-            ))}
+              );
+            })}
             {reviews.length === 0 && (
               <div className="col-span-2 text-center py-12">
                 <span className="material-symbols-outlined text-4xl text-outline-variant/40 mb-3 block">star</span>
@@ -394,13 +527,15 @@ export default function ClientsFidelityPanel({ token }) {
         </div>
       )}
 
-      {/* Modal nueva reseña */}
+      {/* Modal nueva / editar reseña */}
       {showReviewForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm" onClick={() => setShowReviewForm(false)}>
-          <div className="bg-white rounded-[2.5rem] border border-outline-variant/15 w-full max-w-md shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm overflow-y-auto" onClick={() => setShowReviewForm(false)}>
+          <div className="bg-white rounded-[2.5rem] border border-outline-variant/15 w-full max-w-md shadow-2xl my-auto max-h-[92vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <div className="p-8">
               <div className="flex items-center justify-between mb-6">
-                <span className="text-[10px] font-bold uppercase tracking-widest text-terracota">NUEVA RESEÑA</span>
+                <span className="text-[10px] font-bold uppercase tracking-widest text-terracota">
+                  {editingReviewId ? 'EDITAR RESEÑA Y MULTIMEDIA' : 'NUEVA RESEÑA'}
+                </span>
                 <button onClick={() => setShowReviewForm(false)}
                   className="w-8 h-8 rounded-full flex items-center justify-center border border-outline-variant/20 text-on-surface-variant hover:bg-surface-container transition-colors">
                   <span className="material-symbols-outlined text-sm">close</span>
@@ -440,9 +575,61 @@ export default function ClientsFidelityPanel({ token }) {
                   <textarea value={revText} onChange={(e) => setRevText(e.target.value)} rows={3} required
                     className="w-full bg-surface-container-low border border-outline-variant/30 rounded-xl p-3 text-xs resize-none" />
                 </div>
-                <button type="submit"
-                  className="w-full bg-primary text-white py-3 rounded-xl font-bold text-xs hover:scale-[0.98] transition-all">
-                  Guardar reseña
+
+                {/* Adjuntar fotos o vídeos */}
+                <div className="space-y-2 pt-1">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[9px] font-bold text-on-surface-variant uppercase tracking-widest">
+                      Fotos o vídeos de la estancia (opcional)
+                    </label>
+                    <label className={`cursor-pointer px-3 py-1.5 rounded-lg text-[10px] font-bold border border-primary/30 bg-primary/5 text-primary hover:bg-primary/10 transition-all inline-flex items-center gap-1 ${uploadingRevMedia ? 'opacity-50 pointer-events-none' : ''}`}>
+                      <span className="material-symbols-outlined text-xs">add_photo_alternate</span>
+                      {uploadingRevMedia ? 'Subiendo...' : 'Adjuntar foto/vídeo'}
+                      <input
+                        type="file"
+                        accept="image/*,video/*"
+                        multiple
+                        onChange={handleUploadReviewMedia}
+                        className="hidden"
+                      />
+                    </label>
+                  </div>
+                  {revMediaError && <p className="text-[11px] text-rose-600 font-medium">{revMediaError}</p>}
+                  {revMedia.length > 0 && (
+                    <div className="grid grid-cols-3 gap-2 pt-1">
+                      {revMedia.map((m, idx) => {
+                        const src = resolveReviewMediaUrl(m.url);
+                        const isVideo = m.type === 'VIDEO' || m.mimeType?.startsWith('video/') || /\.(mp4|webm|mov|avi|mkv)$/i.test(m.url || '');
+                        return (
+                          <div key={idx} className="relative group rounded-xl overflow-hidden border border-outline-variant/25 aspect-square bg-black/5">
+                            {isVideo ? (
+                              <video src={src} muted playsInline preload="metadata" className="w-full h-full object-cover" />
+                            ) : (
+                              <img src={src} alt={m.name || 'Media'} className="w-full h-full object-cover" />
+                            )}
+                            {isVideo && (
+                              <span className="absolute bottom-1 left-1 bg-black/70 text-white text-[8px] px-1.5 py-0.5 rounded font-bold">
+                                Vídeo
+                              </span>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveRevMedia(idx)}
+                              className="absolute top-1 right-1 w-5 h-5 rounded-full bg-rose-600 text-white flex items-center justify-center text-xs shadow hover:bg-rose-700"
+                              title="Quitar archivo"
+                            >
+                              ×
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                <button type="submit" disabled={uploadingRevMedia}
+                  className="w-full bg-primary text-white py-3 rounded-xl font-bold text-xs hover:scale-[0.98] transition-all disabled:opacity-50">
+                  {editingReviewId ? 'Guardar cambios' : 'Guardar reseña'}
                 </button>
               </form>
             </div>
